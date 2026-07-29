@@ -4,7 +4,7 @@ import { getAgentReadiness, getEnvHealth } from "@/server/env/validation";
 import { getRuntimeModeHealth } from "@/server/env/runtimeMode";
 import { getSecurityHealth } from "@/server/security/policy";
 import { getStorageCounts, getStorageHealth, listAgentRunRecords, listAlerts } from "@/server/storage";
-import { getProductionHealth } from "@/server/observability/health";
+import { getPerformanceHealth, getProductionHealth } from "@/server/observability/health";
 import { getAgentRunMetrics } from "@/server/observability/metrics";
 import { alertThresholds, evaluateAlertThresholds } from "@/server/observability/alerts";
 import { getAuditEventSummary } from "@/server/observability/executionAudit";
@@ -33,6 +33,7 @@ export function GET() {
       storageCounts: await getStorageCounts(),
       security: getSecurityHealth(),
       productionHealth: getProductionHealth(),
+      performance: getPerformanceHealth(),
       metrics,
       executionAudit: auditSummary,
       runbooks,
