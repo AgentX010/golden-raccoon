@@ -776,7 +776,7 @@ async function runExecutionChecks() {
     new Request("http://localhost/api/execute/confirm", {
       method: "POST",
       body: JSON.stringify({
-        walletAddress: "0xabc",
+        walletAddress: "0x1111111111111111111111111111111111111111",
         txHash: `0x${"a".repeat(64)}`,
         userApproved: true,
         simulationStatus: "failed",
@@ -789,7 +789,7 @@ async function runExecutionChecks() {
     new Request("http://localhost/api/execute/confirm", {
       method: "POST",
       body: JSON.stringify({
-        walletAddress: "0xabc",
+        walletAddress: "0x1111111111111111111111111111111111111111",
         txHash: `0x${"c".repeat(64)}`,
         userApproved: true,
         action: "reduce_exposure",
@@ -804,8 +804,8 @@ async function runExecutionChecks() {
     new Request("http://localhost/api/execute/confirm", {
       method: "POST",
       body: JSON.stringify({
-        decisionWalletAddress: "0xabc",
-        walletAddress: "0xdef",
+        decisionWalletAddress: "0x1111111111111111111111111111111111111111",
+        walletAddress: "0x2222222222222222222222222222222222222222",
         txHash: `0x${"d".repeat(64)}`,
         userApproved: true,
       }),
@@ -817,7 +817,7 @@ async function runExecutionChecks() {
     new Request("http://localhost/api/execute/confirm", {
       method: "POST",
       body: JSON.stringify({
-        walletAddress: "0xabc",
+        walletAddress: "0x1111111111111111111111111111111111111111",
         txHash: "not-a-tx",
         userApproved: true,
       }),
@@ -830,7 +830,7 @@ async function runExecutionChecks() {
       method: "POST",
       body: JSON.stringify({
         decisionId: "decision_fixture",
-        walletAddress: "0xabc",
+        walletAddress: "0x1111111111111111111111111111111111111111",
         txHash: `0x${"b".repeat(64)}`,
         userApproved: true,
         network: "GOAT Network",
@@ -849,9 +849,10 @@ async function runExecutionChecks() {
       method: "POST",
       body: JSON.stringify({
         decisionId: "decision_fixture",
-        walletAddress: "0xabc",
+        walletAddress: "0x1111111111111111111111111111111111111111",
         txHash: `0x${"b".repeat(64)}`,
         userApproved: true,
+        network: "GOAT Network",
       }),
     }),
   );
@@ -860,7 +861,7 @@ async function runExecutionChecks() {
   assert(duplicateConfirmJson.pendingVerification === true, "Re-confirming an externally-broadcast hash must report pendingVerification until on-chain verification succeeds.");
 
   const runRecord = createAgentRunRecord({
-    walletAddress: "0xabc",
+    walletAddress: "0x1111111111111111111111111111111111111111",
     mode: "token_scan",
     inputSnapshot: { symbol: "MEME", chain: "base" },
     targetToken: { symbol: "MEME", chain: "base", riskScore: 60 },
