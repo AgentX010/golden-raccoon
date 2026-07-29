@@ -317,6 +317,7 @@ export async function buildExecutionPreview(input: ExecutionAgentInput): Promise
       ruleWalletAddress: policyStatus.ruleWalletAddress,
     },
     quote,
+    realQuote,
     simulation,
     stellarTrustline: stellarTrustlinePreview,
     stellarQuote: stellarSwapQuote,
