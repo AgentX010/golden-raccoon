@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Execution policy failed" }, { status: 403 });
   }
 
-  const rules = getUserRuleRecord(parsed.data.walletAddress);
+  const rules = await getUserRuleRecord(parsed.data.walletAddress);
 
   const result = await runExecutionAgent({ ...parsed.data, rules });
 
