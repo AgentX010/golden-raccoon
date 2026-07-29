@@ -379,6 +379,10 @@ export type TransactionPreview = {
     revokeSuggestion?: string;
     permitSupport: "unsupported" | "planned";
     permit2Support: "unsupported" | "planned";
+    /** V3 hint surfaced by recovery state when active recovery requests target the preview asset. */
+    revivePlan?: string;
+    /** V3 explicit surface for consequences (allowance reduce, trustline removal, incidents). */
+    consequences?: string[];
   };
   blockedReason?: string;
   policy?: {
