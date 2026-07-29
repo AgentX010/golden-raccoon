@@ -1750,12 +1750,14 @@ async function runTransactionLifecycleChecks() {
   assert(evmMismatchedSource.status === 403, "Submit must reject EVM source/wallet mismatches.");
 
   // Confirm API chain-family validation
+  configureStellarSimulator("stellar", "stellar-testnet", { submitOutcome: "submitted", pollOutcome: "confirmed" });
   const stellarConfirmCollision = await confirmExecution(
     new Request("http://localhost/api/execute/confirm", {
       method: "POST",
       body: JSON.stringify({
         walletAddress: stellarWallet,
         chainFamily: "stellar",
+        network: "stellar-testnet",
         txHash: stellarHash2,
         userApproved: true,
       }),
