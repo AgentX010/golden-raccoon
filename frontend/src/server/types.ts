@@ -247,6 +247,9 @@ export type PortfolioSnapshot = {
     provider: string;
     network: string;
     latencyMs: number;
+    requestId?: string;
+    reliability?: number;
+    fallbackUsed?: boolean;
   };
 };
 
