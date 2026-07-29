@@ -869,13 +869,18 @@ export function getUserRuleRecord(walletAddress = "0xDemoWallet") {
 export function upsertUserRuleRecord(input: UserRule) {
   const createdAt = input.createdAt ?? new Date().toISOString();
   const defaults = getDefaultRules(input.walletAddress);
+  const existingIndex = getUserRules().findIndex((rule) => rule.walletAddress.toLowerCase() === input.walletAddress.toLowerCase());
+  // Always auto-increment version on every upsert so decision/execution
+  // see a monotonically-increasing versioned snapshot. Client-supplied
+  // version is ignored — trusted storage owns the version counter.
+  const currentVersion = existingIndex >= 0 ? (getUserRules()[existingIndex].version ?? 0) : 0;
   const record: UserRule = {
     ...defaults,
     ...input,
     autoExecute: false,
+    version: currentVersion + 1,
     createdAt,
   };
-  const existingIndex = getUserRules().findIndex((rule) => rule.walletAddress.toLowerCase() === input.walletAddress.toLowerCase());
 
   if (existingIndex >= 0) {
     getUserRules()[existingIndex] = record;
