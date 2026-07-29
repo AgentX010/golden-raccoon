@@ -10,6 +10,57 @@ import { getUserRuleRecord } from "@/server/storage";
 import { prepareTransaction } from "@/server/transactions/lifecycleManager";
 import type { TransactionRecord } from "@/server/types";
 
+const simulationDetailSchema = z
+  .object({
+    simulatedAt: z.string().optional(),
+    blockNumber: z.number().optional(),
+    ledgerSeq: z.number().optional(),
+    quoteExpiry: z.string().optional(),
+    calldataHash: z.string().optional(),
+    fromAmount: z.string().optional(),
+    route: z.array(z.string()).optional(),
+    slippageBps: z.number().optional(),
+    sequenceNumber: z.union([z.number(), z.string()]).optional(),
+    fee: z.string().optional(),
+    balanceChanges: z
+      .array(
+        z.object({
+          token: z.string(),
+          symbol: z.string(),
+          currentBalance: z.string(),
+          expectedChange: z.string(),
+          direction: z.enum(["inflow", "outflow"]),
+        }),
+      )
+      .optional(),
+    allowanceRisk: z
+      .array(
+        z.object({
+          spender: z.string(),
+          spenderShort: z.string(),
+          token: z.string(),
+          currentAllowance: z.string(),
+          newAllowance: z.string(),
+          isInfinite: z.boolean(),
+        }),
+      )
+      .optional(),
+    trustlineRisk: z
+      .array(
+        z.object({
+          asset: z.string(),
+          assetShort: z.string(),
+          issuer: z.string(),
+          issuerShort: z.string(),
+          action: z.enum(["add", "remove", "update", "authorize", "deauthorize"]),
+          detail: z.string(),
+        }),
+      )
+      .optional(),
+    chainFamily: z.enum(["evm", "stellar"]).optional(),
+  })
+  .optional();
+
 const bodySchema = z.object({
   walletAddress: z.string().optional(),
   chainFamily: z.enum(["evm", "stellar"]).optional(),
