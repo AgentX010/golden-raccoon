@@ -40,6 +40,12 @@ import {
   mirrorTransactionLifecycleEvent,
   mirrorTransactionRecord,
 } from "@/server/storage/postgresAdapter";
+export {
+  authorizeAutoMode,
+  closeAutoModeAuthorization,
+  getAutoModeSnapshot,
+  saveAutoModePolicy,
+} from "@/server/autoMode/storage";
 
 /**
  * Hydration gate. When the Postgres adapter has rows on disk, this
@@ -198,6 +204,8 @@ export const storageSchemaContract = {
     "agent_results",
     "recommendations",
     "user_rules",
+    "auto_mode_policies",
+    "auto_mode_authorization_events",
     "approvals",
     "transactions",
     "transaction_lifecycle_events",
@@ -232,6 +240,10 @@ export const storageSchemaContract = {
     "createX402PaymentReceipt",
     "getUserRuleRecord",
     "upsertUserRuleRecord",
+    "getAutoModeSnapshot",
+    "saveAutoModePolicy",
+    "authorizeAutoMode",
+    "closeAutoModeAuthorization",
     "listAlertRules",
     "getAlertRule",
     "upsertAlertRule",
