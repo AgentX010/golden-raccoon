@@ -13,6 +13,7 @@ import { getScanNetwork, normalizeScanNetworkId, scanNetworks } from "@/lib/scan
 import { useWalletSession } from "@/hooks/useWalletSession";
 import { ApprovalFlowClient } from "@/components/ApprovalFlowClient";
 import { StellarRiskPublishButton } from "@/components/StellarRiskPublishButton";
+import { LiveRegion } from "@/components/a11y/LiveRegion";
 
 const scanCheckLabels = ["Deployed", "Honeypot", "Sell tax", "Ownership", "Holders", "Liquidity", "LP lock", "Market"];
 
@@ -250,15 +251,30 @@ export function DashboardClient() {
   }, [scanResult, visibleScanChecks]);
 
   if (!isConnected && !isConnecting) {
-    return <WalletRequiredState />;
+    return (
+      <>
+        <LiveRegion message="Wallet not connected. Connect a wallet to view your portfolio." />
+        <WalletRequiredState />
+      </>
+    );
   }
 
   if (isConnecting || isConnected && !portfolio && !portfolioFailed) {
-    return <PortfolioLoadingState />;
+    return (
+      <>
+        <LiveRegion message="Loading your portfolio…" />
+        <PortfolioLoadingState />
+      </>
+    );
   }
 
   if (!portfolio || portfolioFailed) {
-    return <NoDataState title="Provider unavailable" detail="Portfolio source has not returned a wallet snapshot yet." action="Not enough connected sources. No mock data used." />;
+    return (
+      <>
+        <LiveRegion message="Portfolio provider unavailable." politeness="assertive" />
+        <NoDataState title="Provider unavailable" detail="Portfolio source has not returned a wallet snapshot yet." action="Not enough connected sources. No mock data used." />
+      </>
+    );
   }
 
   const riskDrivers = getPortfolioRiskDrivers(portfolio);
@@ -465,8 +481,25 @@ export function DashboardClient() {
     }
   }
 
+  const scanStatusMessage = scanError
+    ? scanError
+    : isScanning
+      ? `Scanning token: ${scanCheckLabels[scanStageIndex]}…`
+      : scanResult && scanRevealComplete
+        ? `Scan complete. ${scanResult.symbol} risk ${scanResult.overallRiskScore} out of 100.`
+        : null;
+  const agentRunStatusMessage = dashboardRunSummary?.error
+    ? dashboardRunSummary.error
+    : isRunningAgents
+      ? "Running portfolio agents…"
+      : dashboardRunSummary?.final
+        ? `Agent run complete: ${dashboardRunSummary.final.verdict}.`
+        : null;
+
   return (
     <div className="space-y-5">
+      <LiveRegion message={scanStatusMessage} politeness={scanError ? "assertive" : "polite"} />
+      <LiveRegion message={agentRunStatusMessage} politeness={dashboardRunSummary?.error ? "assertive" : "polite"} />
       <section>
         <h1 className="text-3xl font-semibold tracking-tight">Portfolio</h1>
         <div className="mt-4 grid items-stretch gap-5 lg:grid-cols-[1.15fr_.85fr]">
