@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/server/api/errors";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { toFunctionSelector } from "viem";
@@ -274,26 +275,19 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
   }
 
   try {
     assertApprovalOnly({ autoExecute: false });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Execution policy failed" }, { status: 403 });
+    return jsonError({ code: "auth_error", message: error instanceof Error ? error.message : "Execution policy failed", status: 403 });
   }
 
   try {
     assertPrepareAllowedByRecovery();
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: "incident_mode",
-        detail: error instanceof Error ? error.message : "Incident mode is active.",
-        incidentMode: getIncidentMode(),
-      },
-      { status: 423 },
-    );
+    return jsonError({ code: "incident_mode", message: error instanceof Error ? error.message : "Incident mode is active.", status: 423, legacy: { incidentMode: getIncidentMode() } });
   }
 
   const { portfolio } = await getPortfolioSnapshot(parsed.data.walletAddress);
@@ -329,10 +323,7 @@ export async function POST(request: Request) {
         if (effect.kind === "swap" || effect.kind === "transfer") {
           if (effect.fromToken && !preview.quote.route.some((t) => t.toLowerCase() === effect.fromToken!.toLowerCase())) {
             if (effect.fromToken !== preview.fromToken) {
-              return NextResponse.json({
-                error: "expected_effects_mismatch",
-                detail: `Expected effect fromToken "${effect.fromToken}" does not match preview route or fromToken.`,
-              }, { status: 422 });
+              return jsonError({ code: "expected_effects_mismatch", message: `Expected effect fromToken "${effect.fromToken}" does not match preview route or fromToken.`, status: 422 });
             }
           }
         }

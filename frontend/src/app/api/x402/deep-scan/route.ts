@@ -31,16 +31,13 @@ async function deepScanHandler(request: NextRequest): Promise<NextResponse<unkno
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
   }
 
   const guard = assertFreshX402Payment({ request, requestBody: parsed.data, config });
 
   if (!guard.ok) {
-    return NextResponse.json(
-      { error: guard.error, detail: guard.detail, receiptId: guard.receiptId },
-      { status: guard.status },
-    );
+    return jsonError({ code: guard.error as any, message: guard.detail, status: guard.status, legacy: { receiptId: guard.receiptId } });
   }
 
   // Persist a chain-aware receipt. Payment details come from the x402

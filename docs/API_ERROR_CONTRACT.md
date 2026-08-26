@@ -1,2 +1,2 @@
 # API Error Contract
-Initial scaffold for API error contract.
+Describes the standard error codes, retryable statuses, and recovery actions.

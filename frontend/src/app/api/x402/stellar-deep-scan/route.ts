@@ -80,10 +80,7 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
 
   // Fail-closed: Stellar must be explicitly enabled
   if (!config.stellarEnabled) {
-    return NextResponse.json(
-      { error: "stellar_disabled", detail: "Stellar x402 payments are not enabled. Set X402_STELLAR_ENABLED=1 and X402_STELLAR_PAY_TO to a valid G... address." },
-      { status: 402 },
-    );
+    return jsonError({ code: "stellar_disabled", message: "Stellar x402 payments are not enabled. Set X402_STELLAR_ENABLED=1 and X402_STELLAR_PAY_TO to a valid G... address.", status: 402 });
   }
 
   const parsed = querySchema.safeParse({
@@ -94,7 +91,7 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
   }
 
   // Decode and verify the Stellar payment proof
@@ -103,10 +100,7 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
     const decoded = Buffer.from(parsed.data.paymentProof, "base64").toString("utf-8");
     proof = JSON.parse(decoded) as Record<string, unknown>;
   } catch {
-    return NextResponse.json(
-      { error: "invalid_payment_proof", detail: "The x-stellar-payment-proof header must be a valid base64-encoded JSON object." },
-      { status: 400 },
-    );
+    return jsonError({ code: "invalid_payment_proof", message: "The x-stellar-payment-proof header must be a valid base64-encoded JSON object.", status: 400 });
   }
 
   let verification: { payer: string; network: string };
@@ -114,7 +108,7 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
     verification = verifyStellarPaymentProof(proof);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Payment proof verification failed.";
-    return NextResponse.json({ error: "payment_proof_rejected", detail: message }, { status: 402 });
+    return jsonError({ code: "payment_proof_rejected", message, status: 402 });
   }
 
   // Idempotency: hash the payment proof and check for duplicates
@@ -138,10 +132,7 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
   });
 
   if ("verificationStatus" in receipt && receipt.verificationStatus === "duplicate") {
-    return NextResponse.json(
-      { error: "duplicate_payment", detail: "This Stellar payment proof was already used.", receiptId: receipt.id },
-      { status: 409 },
-    );
+    return jsonError({ code: "duplicate_payment", message: "This Stellar payment proof was already used.", status: 409, legacy: { receiptId: receipt.id } });
   }
 
   const scan = await runTokenScan(parsed.data.query, parsed.data.chain, parsed.data.walletAddress);
