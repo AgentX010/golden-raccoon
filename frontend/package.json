@@ -14,8 +14,9 @@
     "test:stellar-config": "tsx --tsconfig tsconfig.json scripts/stellar-config-check.ts",
     "test:alerts:ui": "tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",
     "test:stellar-portfolio": "tsx --tsconfig tsconfig.json scripts/stellar-portfolio-check.ts",
+    "test:portfolio-stress": "tsx --tsconfig tsconfig.json scripts/portfolio-stress-check.ts",
     "test:a11y": "tsx --tsconfig tsconfig.json scripts/a11y-check.ts",
-    "verify": "npm run test:auto-mode && npm run test:agents && npm run test:stellar-portfolio && npm run test:alerts && npm run test:a11y && npm run lint && npm run build"
+    "verify": "npm run test:auto-mode && npm run test:agents && npm run test:stellar-portfolio && npm run test:portfolio-stress && npm run test:alerts && npm run test:a11y && npm run lint && npm run build"
   },
   "dependencies": {
     "@coinbase/x402": "^2.1.0",
@@ -42,7 +43,7 @@
     "server-only": "^0.0.1",
     "viem": "^2.54.0",
     "wagmi": "^2.19.5",
-    "zod": "^3.25.76"
+    "zod": "^3.22.4"
   },
   "optionalDependencies": {
     "@emnapi/core": "1.11.3",

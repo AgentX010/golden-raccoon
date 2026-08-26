@@ -1320,3 +1320,23 @@ export type ApproveTransactionInput = {
   network: string;
   sourceAccount?: string;
 };
+
+export type PortfolioStressDelta = {
+  originalValueUsd: number;
+  stressedValueUsd: number;
+  valueDeltaUsd: number;
+  percentageDelta: number;
+  originalRiskScore: number;
+  stressedRiskScore: number;
+  riskScoreDelta: number;
+};
+
+export type PortfolioStressResult = {
+  scenarioId: string;
+  scenarioVersion: number;
+  baseSnapshot: PortfolioSnapshot;
+  stressedSnapshot: PortfolioSnapshot;
+  delta: PortfolioStressDelta;
+  assumptions: string[];
+  affectedHoldings: string[];
+};
