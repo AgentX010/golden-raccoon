@@ -10,6 +10,7 @@ import type {
 } from "@/server/types";
 import { storageSchemaContract } from "@/server/storage/contract";
 import type { IStorageAdapter, AgentRunInsert, HealthProbeResult } from "./types";
+import type { RiskSnapshotRecord } from "@/server/snapshots/schema";
 
 const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonAgentRuns?: AgentRunRecord[];
@@ -18,6 +19,7 @@ const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonApprovals?: UserApprovalRecord[];
   __goldenRaccoonUserRules?: UserRule[];
   __goldenRaccoonX402PaymentReceipts?: X402PaymentReceipt[];
+  __goldenRaccoonRiskSnapshots?: RiskSnapshotRecord[];
 };
 
 function getAgentRuns(): AgentRunRecord[] {
@@ -43,6 +45,10 @@ function getUserRules(): UserRule[] {
 function getX402PaymentReceipts(): X402PaymentReceipt[] {
   memoryStore.__goldenRaccoonX402PaymentReceipts ??= [];
   return memoryStore.__goldenRaccoonX402PaymentReceipts;
+}
+function getRiskSnapshots(): RiskSnapshotRecord[] {
+  memoryStore.__goldenRaccoonRiskSnapshots ??= [];
+  return memoryStore.__goldenRaccoonRiskSnapshots;
 }
 
 function normalizedWallet(walletAddress?: string): string | undefined {
@@ -171,6 +177,29 @@ export class MemoryStorageAdapter implements IStorageAdapter {
     return record;
   }
 
+  // ─── Public risk snapshots ──────────────────────────────────────
+
+  async getRiskSnapshot(id: string): Promise<RiskSnapshotRecord | null> {
+    const record = getRiskSnapshots().find((item) => item.id === id);
+    return record ? structuredClone(record) : null;
+  }
+
+  async createRiskSnapshot(record: RiskSnapshotRecord): Promise<RiskSnapshotRecord> {
+    if (getRiskSnapshots().some((item) => item.id === record.id)) {
+      throw new Error("Risk snapshot id already exists.");
+    }
+    const stored = structuredClone(record);
+    getRiskSnapshots().push(stored);
+    return structuredClone(stored);
+  }
+
+  async revokeRiskSnapshot(id: string, revokedAt: string): Promise<RiskSnapshotRecord | null> {
+    const record = getRiskSnapshots().find((item) => item.id === id);
+    if (!record) return null;
+    record.revokedAt ??= revokedAt;
+    return structuredClone(record);
+  }
+
   // ─── Health & counts ─────────────────────────────────────────────
 
   async getStorageHealth(): Promise<StorageHealth> {
@@ -190,6 +219,10 @@ export class MemoryStorageAdapter implements IStorageAdapter {
       approvals: getApprovals().length,
       userRules: getUserRules().length,
       x402PaymentReceipts: getX402PaymentReceipts().length,
+      alertRules: 0,
+      alertObservations: 0,
+      alerts: 0,
+      alertDeliveries: 0,
     };
   }
 

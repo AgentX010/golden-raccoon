@@ -13,6 +13,7 @@ import type {
 } from "@/server/types";
 import { storageSchemaContract } from "@/server/storage/contract";
 import type { IStorageAdapter, AgentRunInsert, HealthProbeResult } from "./types";
+import type { RiskSnapshotRecord } from "@/server/snapshots/schema";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -312,6 +313,33 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     return rowToX402Receipt(data);
   }
 
+  // ─── Public risk snapshots ──────────────────────────────────────
+
+  async getRiskSnapshot(id: string): Promise<RiskSnapshotRecord | null> {
+    const { data, error } = await this.client.from("risk_snapshots").select("*").eq("id", id).maybeSingle();
+    if (error) throw new StorageError("getRiskSnapshot", error);
+    return data ? rowToRiskSnapshot(data) : null;
+  }
+
+  async createRiskSnapshot(record: RiskSnapshotRecord): Promise<RiskSnapshotRecord> {
+    const { data, error } = await this.client.from("risk_snapshots").insert(riskSnapshotToRow(record)).select().single();
+    if (error) throw new StorageError("createRiskSnapshot", error);
+    return rowToRiskSnapshot(data);
+  }
+
+  async revokeRiskSnapshot(id: string, revokedAt: string): Promise<RiskSnapshotRecord | null> {
+    const { data, error } = await this.client
+      .from("risk_snapshots")
+      .update({ revoked_at: revokedAt })
+      .eq("id", id)
+      .is("revoked_at", null)
+      .select()
+      .maybeSingle();
+    if (error) throw new StorageError("revokeRiskSnapshot", error);
+    if (data) return rowToRiskSnapshot(data);
+    return this.getRiskSnapshot(id);
+  }
+
   // ─── Health & counts ─────────────────────────────────────────────
 
   async getStorageHealth(): Promise<StorageHealth> {
@@ -348,7 +376,7 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
   }
 
   async getStorageCounts(): Promise<StorageCounts> {
-    const [agentRuns, recommendations, transactions, approvals, userRules, x402Receipts] =
+    const [agentRuns, recommendations, transactions, approvals, userRules, x402Receipts, alertRules, alertObservations, alerts, alertDeliveries] =
       await Promise.all([
         this.client.from("agent_runs").select("*", { count: "exact", head: true }),
         this.client.from("recommendations").select("*", { count: "exact", head: true }),
@@ -356,6 +384,10 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
         this.client.from("approvals").select("*", { count: "exact", head: true }),
         this.client.from("user_rules").select("*", { count: "exact", head: true }),
         this.client.from("x402_payment_receipts").select("*", { count: "exact", head: true }),
+        this.client.from("alert_rules").select("*", { count: "exact", head: true }),
+        this.client.from("alert_observations").select("*", { count: "exact", head: true }),
+        this.client.from("alerts").select("*", { count: "exact", head: true }),
+        this.client.from("alert_deliveries").select("*", { count: "exact", head: true }),
       ]);
 
     return {
@@ -365,6 +397,10 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
       approvals: approvals.count ?? 0,
       userRules: userRules.count ?? 0,
       x402PaymentReceipts: x402Receipts.count ?? 0,
+      alertRules: alertRules.count ?? 0,
+      alertObservations: alertObservations.count ?? 0,
+      alerts: alerts.count ?? 0,
+      alertDeliveries: alertDeliveries.count ?? 0,
     };
   }
 
@@ -458,6 +494,35 @@ type TransactionRow = Record<string, unknown>;
 type ApprovalRow = Record<string, unknown>;
 type UserRuleRow = Record<string, unknown>;
 type X402Row = Record<string, unknown>;
+type RiskSnapshotRow = Record<string, unknown>;
+
+function rowToRiskSnapshot(row: RiskSnapshotRow): RiskSnapshotRecord {
+  return {
+    id: String(row.id ?? ""),
+    schemaVersion: String(row.schema_version ?? ""),
+    snapshot: row.snapshot as RiskSnapshotRecord["snapshot"],
+    canonicalHash: String(row.canonical_hash ?? ""),
+    identityKey: String(row.identity_key ?? ""),
+    revocationTokenHash: String(row.revocation_token_hash ?? ""),
+    createdAt: String(row.created_at ?? ""),
+    expiresAt: String(row.expires_at ?? ""),
+    revokedAt: row.revoked_at ? String(row.revoked_at) : undefined,
+  };
+}
+
+function riskSnapshotToRow(record: RiskSnapshotRecord): RiskSnapshotRow {
+  return {
+    id: record.id,
+    schema_version: record.schemaVersion,
+    snapshot: record.snapshot,
+    canonical_hash: record.canonicalHash,
+    identity_key: record.identityKey,
+    revocation_token_hash: record.revocationTokenHash,
+    created_at: record.createdAt,
+    expires_at: record.expiresAt,
+    revoked_at: record.revokedAt ?? null,
+  };
+}
 
 function rowToAgentRun(row: AgentRunRow): AgentRunRecord {
   return {
@@ -531,13 +596,16 @@ function recommendationToRow(record: RecommendationRecord): RecommendationRow {
 }
 
 function rowToTransaction(row: TransactionRow): TransactionRecord {
+  const status = row.lifecycle_status ?? row.status ?? "pending";
   return {
     hash: String(row.tx_hash ?? ""),
     type: row.type as TransactionRecord["type"],
     decisionAction: row.decision_action as TransactionRecord["decisionAction"] ?? undefined,
     asset: String(row.asset ?? ""),
     valueUsd: Number(row.value_usd ?? 0),
-    status: row.status as TransactionRecord["status"],
+    status: status as TransactionRecord["status"],
+    lifecycleStatus: status as TransactionRecord["lifecycleStatus"],
+    chainFamily: (row.chain_family as TransactionRecord["chainFamily"]) ?? "evm",
     createdAt: String(row.created_at ?? new Date().toISOString()),
     network: String(row.network ?? ""),
     walletAddress: String(row.wallet_address ?? ""),
@@ -557,6 +625,8 @@ function transactionToRow(record: TransactionRecord): TransactionRow {
     asset: record.asset,
     value_usd: record.valueUsd,
     status: record.status,
+    lifecycle_status: record.lifecycleStatus,
+    chain_family: record.chainFamily,
     wallet_address: record.walletAddress ?? "",
     network: record.network,
     user_approved: record.userApproved ?? false,
@@ -633,6 +703,7 @@ function userRuleToRow(rule: UserRule, isStellar: boolean): UserRuleRow {
 }
 
 function rowToX402Receipt(row: X402Row): X402PaymentReceipt {
+  const chainFamily = (row.chain_family as X402PaymentReceipt["chainFamily"]) ?? "evm";
   return {
     id: String(row.id ?? ""),
     requestId: String(row.request_id ?? ""),
@@ -640,6 +711,8 @@ function rowToX402Receipt(row: X402Row): X402PaymentReceipt {
     walletAddress: row.wallet_address ? String(row.wallet_address) : undefined,
     payer: row.payer ? String(row.payer) : undefined,
     transactionHash: row.transaction_hash ? String(row.transaction_hash) : undefined,
+    chainFamily,
+    payerIdentity: row.payer_identity ? row.payer_identity as X402PaymentReceipt["payerIdentity"] : undefined,
     network: String(row.network ?? ""),
     asset: String(row.asset ?? ""),
     amount: String(row.amount ?? ""),
@@ -648,6 +721,7 @@ function rowToX402Receipt(row: X402Row): X402PaymentReceipt {
     facilitatorUrl: String(row.facilitator_url ?? ""),
     protectedResource: String(row.protected_resource ?? ""),
     requestBodyHash: String(row.request_body_hash ?? ""),
+    paymentExpiry: row.payment_expiry ? String(row.payment_expiry) : undefined,
     verificationStatus: row.verification_status as X402PaymentReceipt["verificationStatus"],
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),
@@ -662,6 +736,8 @@ function x402ReceiptToRow(record: X402PaymentReceipt): X402Row {
     wallet_address: record.walletAddress ?? null,
     payer: record.payer ?? null,
     transaction_hash: record.transactionHash ?? null,
+    chain_family: record.chainFamily,
+    payer_identity: record.payerIdentity ?? {},
     network: record.network,
     asset: record.asset,
     amount: record.amount,
@@ -670,6 +746,7 @@ function x402ReceiptToRow(record: X402PaymentReceipt): X402Row {
     facilitator_url: record.facilitatorUrl,
     protected_resource: record.protectedResource,
     request_body_hash: record.requestBodyHash,
+    payment_expiry: record.paymentExpiry ?? null,
     verification_status: record.verificationStatus,
     created_at: record.createdAt,
     updated_at: record.updatedAt,

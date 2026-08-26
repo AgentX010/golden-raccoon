@@ -10,6 +10,7 @@ import type {
   UserRule,
   X402PaymentReceipt,
 } from "@/server/types";
+import type { RiskSnapshotRecord } from "@/server/snapshots/schema";
 
 export type { StorageHealth, StorageCounts, StorageProvider };
 
@@ -85,6 +86,11 @@ export interface IStorageAdapter {
   listX402PaymentReceipts(): Promise<X402PaymentReceipt[]>;
   getX402PaymentReceiptByHeaderHash(paymentHeaderHash: string): Promise<X402PaymentReceipt | null>;
   createX402PaymentReceipt(record: X402PaymentReceipt): Promise<X402PaymentReceipt>;
+
+  // ─── Public risk snapshots ──────────────────────────────────────
+  getRiskSnapshot(id: string): Promise<RiskSnapshotRecord | null>;
+  createRiskSnapshot(record: RiskSnapshotRecord): Promise<RiskSnapshotRecord>;
+  revokeRiskSnapshot(id: string, revokedAt: string): Promise<RiskSnapshotRecord | null>;
 
   // ─── Health & counts ─────────────────────────────────────────────
   getStorageHealth(): Promise<StorageHealth>;

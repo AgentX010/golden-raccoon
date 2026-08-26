@@ -787,6 +787,17 @@ export type TokenScanResult = {
   scannedAt: string;
 };
 
+export type RiskSnapshotCreateResponse = {
+  id: string;
+  hash: string;
+  schemaVersion: string;
+  createdAt: string;
+  expiresAt: string;
+  revocationToken: string;
+  shareUrl: string;
+  downloadUrl: string;
+};
+
 export type TransactionLifecycleStatus =
   | "prepared"
   | "user_rejected"

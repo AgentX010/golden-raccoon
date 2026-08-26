@@ -13,6 +13,7 @@ import { RiskBreakdownCard } from "@/components/RiskBreakdownCard";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { StellarRiskPublishButton } from "@/components/StellarRiskPublishButton";
 import { LiveRegion } from "@/components/a11y/LiveRegion";
+import { RiskSnapshotActions } from "@/components/RiskSnapshotActions";
 
 const paymentStatusLabels: Record<PaymentStage, { title: string; detail: string }> = {
   idle: {
@@ -530,6 +531,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                 verdict={report?.verdict ?? scan.verdict}
                 report={report ?? scan}
               />
+              <RiskSnapshotActions source={scan} />
               {normalizedInput ? (
                 <details className="mt-4 text-xs text-white/58">
                   <summary className="cursor-pointer text-white/42">Token details</summary>
