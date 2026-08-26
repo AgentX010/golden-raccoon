@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
+import { gateFeature } from "@/server/features/evaluator";
 import { z } from "zod";
 import { toFunctionSelector } from "viem";
 import { Account, Asset, BASE_FEE, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
@@ -275,6 +276,14 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const prepareGate = gateFeature("execute_prepare", parsed.data.walletAddress ?? "");
+  if (!prepareGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "execute_prepare", detail: prepareGate.detail },
+      { status: 403 },
+    );
   }
 
   try {

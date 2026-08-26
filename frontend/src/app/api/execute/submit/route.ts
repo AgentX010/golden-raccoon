@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import { isWalletAddressForChain, isStellarAccountAddress, canonicalizeAddress, getChainFamily } from "@/lib/chainIdentity";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -40,6 +41,14 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const submitGate = gateFeature("execute_submit", parsed.data.walletAddress ?? "");
+  if (!submitGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "execute_submit", detail: submitGate.detail },
+      { status: 403 },
+    );
   }
 
   const walletFamily = getChainFamily(parsed.data.network);

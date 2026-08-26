@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import {
   closeAutoModeAuthorization,
   getAutoModeSnapshot,
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "invalid_auto_mode_authorization", detail: parsed.error.flatten() },
       { status: 400 },
+    );
+  }
+
+  const autoModeGate = gateFeature("auto_mode_authorization", parsed.data.walletAddress ?? "");
+  if (!autoModeGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "auto_mode_authorization", detail: autoModeGate.detail },
+      { status: 403 },
     );
   }
 

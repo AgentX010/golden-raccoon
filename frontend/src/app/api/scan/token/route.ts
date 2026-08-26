@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { runTokenScan } from "@/server/scan/tokenScan";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -26,6 +27,14 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const scanGate = gateFeature("scan_token", parsed.data.walletAddress ?? "");
+  if (!scanGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "scan_token", detail: scanGate.detail },
+      { status: 403 },
+    );
   }
 
   const timer = createPhaseTimer();

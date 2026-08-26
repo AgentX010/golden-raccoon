@@ -1,4 +1,7 @@
 import { stellarNetworks, validateStellarNetworkConfig } from "@/lib/stellar/config";
+import { featureFlagRegistry } from "@/server/features/registry";
+import { evaluateFeature, getFeatureConfigIssues, getFeatureEnvironment } from "@/server/features/evaluator";
+import type { FeatureFlagKey } from "@/server/features/types";
 
 type EnvCheck = {
   key: string;
@@ -162,5 +165,26 @@ export function getAgentReadiness() {
         ? "GOAT premium deep scan is protected by x402 payment configuration."
         : "x402 payment env is incomplete; premium deep scan remains locked for production.",
     },
+  };
+}
+
+/** Non-sensitive feature-flag status for health and operations surfaces. */
+export function getFeatureFlagHealth() {
+  const environment = getFeatureEnvironment();
+  const issues = getFeatureConfigIssues();
+  const flags = (Object.keys(featureFlagRegistry) as FeatureFlagKey[]).map((key) => {
+    const decision = evaluateFeature(key, { identifier: "health_probe", environment });
+    return {
+      key,
+      enabled: decision.enabled,
+      reason: decision.reason,
+      detail: decision.detail,
+    };
+  });
+  return {
+    environment,
+    valid: issues.length === 0,
+    issues,
+    flags,
   };
 }

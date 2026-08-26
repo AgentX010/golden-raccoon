@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import { StrKey } from "@stellar/stellar-sdk";
 import { runTokenScan } from "@/server/scan/tokenScan";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -95,6 +96,14 @@ async function stellarDeepScanHandler(request: NextRequest): Promise<NextRespons
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const x402Gate = gateFeature("x402_stellar_deep_scan", parsed.data.walletAddress ?? "");
+  if (!x402Gate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "x402_stellar_deep_scan", detail: x402Gate.detail },
+      { status: 403 },
+    );
   }
 
   // Decode and verify the Stellar payment proof
