@@ -74,7 +74,8 @@ export type ExecutionAuditEventKind =
   | "contract_audit_failed"
   | "provider_health_check"
   | "provider_degraded"
-  | "lifecycle_expired";
+  | "lifecycle_expired"
+  | "privacy_export";
 
 // ── In-memory audit store ──────────────────────────────────────────
 

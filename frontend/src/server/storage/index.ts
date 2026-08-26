@@ -876,6 +876,23 @@ export function createApprovalRecord(input: Omit<UserApprovalRecord, "id" | "cre
   return record;
 }
 
+/**
+ * Fetch the wallet-scoped source records for an audit bundle export. Returns
+ * decisions, approvals, and transactions for a single wallet — the raw inputs
+ * the privacy bundle redacts and hashes. Never returns another wallet's data.
+ */
+export function getAuditSourceRecords(walletAddress: string): {
+  decisions: RecommendationRecord[];
+  approvals: UserApprovalRecord[];
+  transactions: TransactionRecord[];
+} {
+  return {
+    decisions: listRecommendationRecords(walletAddress),
+    approvals: listApprovalRecords(walletAddress),
+    transactions: listTransactionRecords(walletAddress),
+  };
+}
+
 export function getUserRuleRecord(walletAddress = "0xDemoWallet") {
   const existing = getUserRules().find((rule) => rule.walletAddress.toLowerCase() === walletAddress.toLowerCase());
 
