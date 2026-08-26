@@ -114,3 +114,4 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ error: "Invalid watchlist request." }, { status: 400 });
 }
+// Bulk import/export handles versions up to 1.0.0

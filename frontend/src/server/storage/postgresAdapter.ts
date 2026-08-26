@@ -1502,6 +1502,11 @@ export function mirrorTransactionLifecycleEvent(event: TransactionLifecycleEvent
   void getPostgresStorageAdapter().mirrorTransactionLifecycleEvent(event);
 }
 
+
+export function mirrorWatchlistEntryWriteBulk(entries: WatchlistEntry[]): void {
+  void getPostgresStorageAdapter().mirrorWatchlistEntryBulk(entries);
+}
+
 export function mirrorWatchlistEntryWrite(entry: WatchlistEntry): void {
   void getPostgresStorageAdapter().mirrorWatchlistEntry(entry);
 }

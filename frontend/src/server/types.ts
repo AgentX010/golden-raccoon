@@ -1320,3 +1320,46 @@ export type ApproveTransactionInput = {
   network: string;
   sourceAccount?: string;
 };
+
+// Watchlist Export/Import Types
+export type WatchlistExportVersion = "1.0.0";
+
+export type WatchlistExportRow = {
+  version: WatchlistExportVersion;
+  chain: string;
+  network?: string;
+  assetType?: string;
+  contractAddress?: string;
+  pairAddress?: string;
+  symbol?: string;
+  tokenName?: string;
+  assetKey?: string;
+  issuer?: string;
+  source: string;
+  note?: string;
+  createdAt: string;
+};
+
+export type WatchlistExportFormat = {
+  version: WatchlistExportVersion;
+  walletAddress: string;
+  exportedAt: string;
+  entries: WatchlistExportRow[];
+};
+
+export type WatchlistImportDryRunRowResult = {
+  index: number;
+  row: Partial<WatchlistExportRow>;
+  status: "valid" | "duplicate" | "collision" | "invalid";
+  errors: string[];
+  canonicalIdentityKey?: string;
+};
+
+export type WatchlistImportDryRunResult = {
+  validCount: number;
+  duplicateCount: number;
+  collisionCount: number;
+  invalidCount: number;
+  totalRows: number;
+  results: WatchlistImportDryRunRowResult[];
+};
