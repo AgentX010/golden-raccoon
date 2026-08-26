@@ -4,6 +4,7 @@ import { z } from "zod";
 import { isWalletAddressForChain, isStellarAccountAddress, canonicalizeAddress, getChainFamily } from "@/lib/chainIdentity";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
+import { resolveWalletSession } from "@/server/security/walletSession";
 import { submitTransaction } from "@/server/transactions/lifecycleManager";
 
 const bodySchema = z.object({
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
+  }
+
+  const session = resolveWalletSession(request, { suppliedWallet: parsed.data.walletAddress });
+  if (session.response) {
+    return session.response;
   }
 
   const walletFamily = getChainFamily(parsed.data.network);
