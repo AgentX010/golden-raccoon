@@ -676,6 +676,15 @@ class PostgresStorageAdapter {
     await this.enqueueMirror(() => this.doMirrorWatchlistEntry(entry));
   }
 
+  async mirrorWatchlistEntryBulk(entries: PersistedWatchlistEntry[]): Promise<void> {
+    if (!this.connectionString || !(await this.ensurePool())) return;
+    await this.enqueueMirror(async () => {
+      for (const entry of entries) {
+        await this.doMirrorWatchlistEntry(entry);
+      }
+    });
+  }
+
   async removeMirrorWatchlistEntry(id: string): Promise<void> {
     if (!this.connectionString || !(await this.ensurePool())) return;
     await this.enqueueMirror(() => this.doRemoveMirrorWatchlistEntry(id));

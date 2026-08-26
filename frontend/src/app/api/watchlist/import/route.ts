@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
 
   const seenIdentities = new Set<string>();
 
-  // TODO: Check against existing entries in DB to detect true duplicates/collisions.
-  // We can just use addWatchlistEntry to try and add it if not dryRun, 
-  // but dryRun needs to know if it's already there.
+  const { listWatchlistEntries } = require("@/server/storage");
+  const existingEntries = listWatchlistEntries(wallet);
+  const existingIdentities = new Set(existingEntries.map((e: any) => e.identityKey));
 
   for (let i = 0; i < entries.length; i++) {
     const row = entries[i];
@@ -102,6 +102,9 @@ export async function POST(request: NextRequest) {
        if (seenIdentities.has(identityKey)) {
          rowResult.status = "duplicate";
          rowResult.errors.push("Duplicate identity in import");
+       } else if (existingIdentities.has(identityKey)) {
+         rowResult.status = "duplicate";
+         rowResult.errors.push("Identity already exists in watchlist");
        } else {
          seenIdentities.add(identityKey);
        }

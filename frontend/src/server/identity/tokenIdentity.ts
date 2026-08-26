@@ -163,6 +163,7 @@ export function getWatchlistIdentityKey(entry: {
   contractAddress?: string;
   assetKey?: string;
   issuer?: string;
+  symbol?: string;
 }): string {
   const chain = normalizeChain(entry.chain) || "unknown-chain";
   const network = entry.network?.trim().toLowerCase() || "mainnet";
@@ -191,5 +192,6 @@ export function getWatchlistIdentityKey(entry: {
     return `${chain}:${network}:${entry.assetKey}`;
   }
 
-  return `${chain}:${network}:unknown-${Date.now()}`;
+  const symbolStr = entry.symbol ? `:${entry.symbol.trim().toLowerCase()}` : "";
+  return `${chain}:${network}:unknown-asset${symbolStr}`;
 }
