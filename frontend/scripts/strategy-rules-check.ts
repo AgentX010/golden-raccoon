@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Unit and API checks for persistent strategy profiles and the rule editor.
  *

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { AppShell } from "@/components/AppShell";
 import { StrategyClient } from "@/components/StrategyClient";
 import { getDefaultRules } from "@/server/rules/defaultRules";

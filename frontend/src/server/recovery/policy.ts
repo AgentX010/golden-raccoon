@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import type { RecoveryChain, RecoveryIncidentMode, RecoveryNetworkFreshness, RecoveryRequest, RecoveryType } from "@/server/types";
 import { RECOVERY_RULES_VERSION } from "@/server/types";
 

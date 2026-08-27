@@ -132,5 +132,3 @@ export function getRecentApiLatencyByRoute(): Record<string, PercentileSummary> 
 export function getApiTimingSampleCount() {
   return getRingBuffer().length;
 }
-
-// Integrated with SLO requirements

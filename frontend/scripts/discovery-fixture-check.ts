@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Discovery service fixture check.
  * Validates the acceptance criteria from Issue #36:

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import type { AgentFinding, AgentResult, RiskBreakdownItem, RiskLevel, TokenScanResult } from "@/server/types";
 import { runDecisionAgent } from "@/server/agents/decision";
 import { buildExecutionPreview } from "@/server/agents/execution";

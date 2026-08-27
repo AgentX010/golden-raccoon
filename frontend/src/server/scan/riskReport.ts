@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { z } from "zod";
 import type {
   AgentFinding,

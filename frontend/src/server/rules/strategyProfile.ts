@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Strategy profile normalization and validation.
  *

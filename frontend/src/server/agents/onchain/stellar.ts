@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Contract, StrKey, xdr } from "@stellar/stellar-sdk";
 import type { AgentFinding, AgentResult, AgentSource } from "@/server/types";
 import { buildAgentResult, weightedScore } from "@/server/agents/shared";

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import type { AssetAmount, Money, Network, PaymentRequirements, Price, SchemeNetworkServer, SupportedKind } from "@x402/core/types";
 import {
   STELLAR_TESTNET_USDC_CONTRACT,

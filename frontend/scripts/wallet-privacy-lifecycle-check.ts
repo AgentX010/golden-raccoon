@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Comprehensive Privacy Lifecycle & Data Retention Check Script.
  * Runs with:

@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";

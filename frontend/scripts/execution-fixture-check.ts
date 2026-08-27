@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Provider failure fixture tests for execution observability.
  * Exercises each degraded state and verifies redaction, audit events,

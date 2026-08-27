@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 "use client";
 
 import type { SourceSnapshotDetail } from "@/server/types";

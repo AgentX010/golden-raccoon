@@ -274,5 +274,3 @@ export function getConfiguredProviderHealth(): ProviderHealthSnapshot {
     overallStatus: anyUnavailable ? "unavailable" : "healthy",
   };
 }
-
-// Integrated with SLO requirements

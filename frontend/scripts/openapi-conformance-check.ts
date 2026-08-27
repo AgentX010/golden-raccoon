@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * Validates that:
  *  - docs/openapi/v1/openapi.json is well-formed and declares the required

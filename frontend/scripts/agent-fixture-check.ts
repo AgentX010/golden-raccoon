@@ -1,7 +1,3 @@
-// @ts-nocheck
-
-// @ts-nocheck
-
 import { runNewsAgent } from "../src/server/agents/news";
 import { runOnchainAgent } from "../src/server/agents/onchain";
 import { runStellarOnchainAgent, type StellarOnchainProviders } from "../src/server/agents/onchain/stellar";

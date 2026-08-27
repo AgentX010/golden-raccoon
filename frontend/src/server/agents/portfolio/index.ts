@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import type { AgentResult, AgentSource, PortfolioSnapshot } from "@/server/types";
 import { getPortfolioProviderHealth, getPortfolioSnapshot, type PortfolioSnapshotSource } from "@/server/portfolio/getPortfolio";
 import { buildAgentResult } from "@/server/agents/shared";

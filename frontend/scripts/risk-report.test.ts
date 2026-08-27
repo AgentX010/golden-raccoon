@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { buildRiskReport, validateRiskReport, riskReportConventions } from "../src/server/scan/riskReport";
 import { runDecisionAgent } from "../src/server/agents/decision";
 import { buildAgentResult } from "../src/server/agents/shared";

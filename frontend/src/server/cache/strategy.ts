@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { NextResponse } from "next/server";
 
 export type ApiCacheKey =
