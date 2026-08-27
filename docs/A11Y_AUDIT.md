@@ -58,6 +58,7 @@ reader users), **Serious** (significant friction or missing information),
 | 9 | Minor | Motion | No `prefers-reduced-motion` handling; pulse/ping/spin animations used throughout loading states could not be disabled by users sensitive to motion. | Fixed — global reduced-motion media query shortens all animations/transitions to near-zero. |
 | 10 | Moderate | Charts | Other `recharts`-based visualizations outside `RiskScoreCard` (e.g. in `AgentResultPanel` or elsewhere) were not audited in this pass. | Open — tracked under "Remaining manual steps". |
 | 11 | Minor | Automated E2E | No Playwright/axe-core coverage exists yet for keyboard traversal or automated contrast/ARIA scanning. | Open — static checks added instead (`npm run test:a11y`); Playwright+axe is a follow-up. |
+| 12 | Moderate | Portfolio Stress | The new portfolio stress panel needs accessible forms, live regions for simulation results, and semantic structure. | Fixed — Added `aria-label`, `aria-live`, `aria-busy`, and `role="alert"` in `PortfolioStressPanel.tsx`. |
 
 ## Before / after
 

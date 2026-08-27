@@ -1,6 +1,7 @@
 import type { PortfolioSnapshot } from "@/server/types";
 import { formatUsd, shortAddress } from "@/lib/format";
 import { BadgeCheck } from "lucide-react";
+import { PortfolioStressPanel } from "./PortfolioStressPanel";
 
 type LogoFallback = {
   label: string;
@@ -285,6 +286,7 @@ export function WalletPortfolioCard({
           );
         })}
       </div>
+      <PortfolioStressPanel portfolio={portfolio} />
     </section>
   );
 }
