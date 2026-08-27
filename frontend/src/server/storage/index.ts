@@ -14,6 +14,7 @@ import type {
   TransactionLifecycleEvent,
   TransactionLifecycleEventName,
   TransactionLifecycleStatus,
+  TransactionObservation,
   TransactionRecord,
   UserApprovalRecord,
   UserRule,
@@ -81,6 +82,7 @@ import { clearPortfolioCacheForWallet } from "@/server/stellar/portfolio";
   __goldenRaccoonRecommendations?: RecommendationRecord[];
   __goldenRaccoonTransactions?: TransactionRecord[];
   __goldenRaccoonTransactionEvents?: TransactionLifecycleEvent[];
+  __goldenRaccoonTransactionObservations?: TransactionObservation[];
   __goldenRaccoonApprovals?: UserApprovalRecord[];
   __goldenRaccoonUserRules?: UserRule[];
   __goldenRaccoonX402PaymentReceipts?: X402PaymentReceipt[];
@@ -207,6 +209,11 @@ function getTransactionEvents() {
   return memoryStore.__goldenRaccoonTransactionEvents;
 }
 
+function getTransactionObservations() {
+  memoryStore.__goldenRaccoonTransactionObservations ??= [];
+  return memoryStore.__goldenRaccoonTransactionObservations;
+}
+
 type CreateAgentRunInput = {
   walletAddress: string;
   mode?: AgentRunRecord["mode"];
@@ -228,6 +235,7 @@ export const storageSchemaContract = {
     "approvals",
     "transactions",
     "transaction_lifecycle_events",
+    "transaction_observations",
     "x402_payment_receipts",
     "token_identities",
     "source_snapshots",
@@ -252,6 +260,8 @@ export const storageSchemaContract = {
     "updateTransactionRecord",
     "listTransactionLifecycleEvents",
     "createTransactionLifecycleEvent",
+    "listTransactionObservations",
+    "createTransactionObservation",
     "listApprovalRecords",
     "createApprovalRecord",
     "listX402PaymentReceipts",
@@ -748,6 +758,21 @@ export function listTransactionRecords(walletAddress?: string) {
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 }
 
+export function listTransactionRecordsPaginated(
+  walletAddress?: string,
+  options: { cursor?: string; limit?: number } = {},
+) {
+  const all = listTransactionRecords(walletAddress);
+  const limit = Math.min(200, Math.max(1, options.limit ?? 50));
+  const offset = options.cursor ? Math.max(0, all.findIndex((record) => record.hash === options.cursor) + 1) : 0;
+  const items = all.slice(offset, offset + limit);
+  return {
+    items,
+    total: all.length,
+    nextCursor: offset + limit < all.length ? items.at(-1)?.hash : undefined,
+  };
+}
+
 export function getTransactionRecord(hash: string) {
   const family: ChainFamily = isTransactionHashForChain(hash, "evm")
     ? "evm"
@@ -823,6 +848,29 @@ export function listTransactionLifecycleEvents(hash: string) {
     .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime());
 }
 
+export function listTransactionObservations(hash: string) {
+  const normalized = hash.trim().toLowerCase();
+  return getTransactionObservations()
+    .filter((observation) => observation.hash.toLowerCase() === normalized)
+    .sort((left, right) => new Date(right.observedAt).getTime() - new Date(left.observedAt).getTime());
+}
+
+export function createTransactionObservation(
+  input: Omit<TransactionObservation, "id" | "observedAt"> & { observedAt?: string },
+) {
+  const existing = getTransactionObservations().find(
+    (observation) => observation.hash.toLowerCase() === input.hash.toLowerCase() && observation.evidenceKey === input.evidenceKey,
+  );
+  if (existing) return { observation: existing, created: false };
+  const observation: TransactionObservation = {
+    ...input,
+    id: createRecordId("tx_observation"),
+    observedAt: input.observedAt ?? new Date().toISOString(),
+  };
+  getTransactionObservations().unshift(observation);
+  return { observation, created: true };
+}
+
 export function createTransactionLifecycleEvent(input: Omit<TransactionLifecycleEvent, "id" | "occurredAt"> & { occurredAt?: string }) {
   const event: TransactionLifecycleEvent = {
     id: createRecordId("tx_event"),
@@ -852,7 +900,7 @@ export function appendLifecycleEventByName(hash: string, event: TransactionLifec
 }
 
 export function isImmutableTerminal(status: TransactionLifecycleStatus) {
-  return status === "confirmed" || status === "failed" || status === "replaced" || status === "expired" || status === "user_rejected";
+  return status === "failed" || status === "replaced" || status === "dropped" || status === "expired" || status === "user_rejected";
 }
 
 export function listApprovalRecords(walletAddress?: string) {

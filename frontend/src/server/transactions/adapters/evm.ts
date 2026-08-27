@@ -4,7 +4,7 @@ import type { ChainFamily } from "@/lib/chainIdentity";
 import { isTransactionHashForChain } from "@/lib/chainIdentity";
 import { resolveEvmRpcUrl, resolveEvmChainId } from "@/lib/evm/config";
 
-export type EvmTerminalStatus = "confirmed" | "failed" | "replaced" | "expired" | "pending" | "submitted";
+export type EvmTerminalStatus = "confirming" | "confirmed" | "failed" | "replaced" | "reorged" | "dropped" | "manual_review" | "expired" | "pending" | "submitted";
 
 export type EvmVerificationExpectation = {
   walletAddress?: string;
@@ -79,17 +79,34 @@ export type EvmPollResult = {
   toAddress?: string;
   matchedEffects?: boolean;
   verificationDetail?: string;
+  observationStatus?: "not_found" | "pending" | "included" | "confirmed" | "failed" | "replaced" | "expired" | "provider_disagreement";
+  confirmations?: number;
+  requiredConfirmations?: number;
+  replacementHash?: Hash;
+  nonce?: number;
+  providerAgreement?: boolean;
 };
 
 export type EvmAdapterOptions = {
   network: string;
   chainId?: number;
   rpcUrl?: string;
+  confirmationDepth?: number;
 };
+
+type EvmPollFixtureStatus = "confirmed" | "failed" | "replaced" | "reorged" | "dropped" | "provider_disagreement" | "expired" | "pending";
 
 type EvmSimulatorConfig = {
   submitOutcome?: "submitted" | "rejected" | "expired" | "failed";
-  pollOutcome?: "confirmed" | "failed" | "replaced" | "expired" | "pending";
+  pollOutcome?: EvmPollFixtureStatus;
+  pollSequence?: Array<{
+    status: EvmPollFixtureStatus;
+    confirmations?: number;
+    blockNumber?: number;
+    blockHash?: Hash;
+    replacementHash?: Hash;
+  }>;
+  pollCursor?: number;
   expectedEffects?: EvmVerificationExpectation["expectedEffects"];
 };
 
@@ -338,24 +355,31 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
     },
     async poll(hash, overrides) {
       const simulator = getEvmSimulator(family, network);
-      const outcome = overrides?.simulate ?? simulator?.pollOutcome;
+      const sequenceItem = simulator?.pollSequence?.[simulator.pollCursor ?? 0];
+      if (sequenceItem && simulator) simulator.pollCursor = (simulator.pollCursor ?? 0) + 1;
+      const outcome = overrides?.simulate ?? sequenceItem?.status ?? simulator?.pollOutcome;
       const polledAt = new Date().toISOString();
       const expectation = overrides?.expectation;
+      const requiredConfirmations = Math.max(1, options.confirmationDepth ?? Number(process.env.EVM_CONFIRMATION_DEPTH ?? 3));
 
       if (outcome === "expired") {
-        return { hash, family, network, status: "expired", providerUrl, polledAt };
+        return { hash, family, network, status: "expired", observationStatus: "expired", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
       }
 
       if (outcome === "replaced") {
-        return { hash, family, network, status: "replaced", providerUrl, polledAt };
+        return { hash, family, network, status: "replaced", observationStatus: "replaced", replacementHash: sequenceItem?.replacementHash, providerUrl, polledAt, confirmations: 0, requiredConfirmations };
       }
 
+      if (outcome === "reorged") return { hash, family, network, status: "reorged", observationStatus: "not_found", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "dropped") return { hash, family, network, status: "dropped", observationStatus: "not_found", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "provider_disagreement") return { hash, family, network, status: "manual_review", observationStatus: "provider_disagreement", providerAgreement: false, providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+
       if (outcome === "failed") {
-        return { hash, family, network, status: "failed", providerUrl, polledAt, revertReason: "Simulated revert reason (fixture coverage)." };
+        return { hash, family, network, status: "failed", observationStatus: "failed", providerUrl, polledAt, revertReason: "Simulated revert reason (fixture coverage).", confirmations: 0, requiredConfirmations };
       }
 
       if (outcome === "pending") {
-        return { hash, family, network, status: "pending", providerUrl, polledAt };
+        return { hash, family, network, status: "pending", observationStatus: "pending", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
       }
 
       if (simulator || outcome) {
@@ -370,11 +394,14 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
           hash,
           family,
           network,
-          status: "confirmed",
+          status: (sequenceItem?.confirmations ?? requiredConfirmations) >= requiredConfirmations ? "confirmed" : "confirming",
+          observationStatus: "included",
           providerUrl,
           polledAt,
-          blockNumber,
-          blockHash: "0x0000000000000000000000000000000000000000000000000000000000000001" as Hash,
+          blockNumber: BigInt(sequenceItem?.blockNumber ?? Number(blockNumber)),
+          blockHash: sequenceItem?.blockHash ?? "0x0000000000000000000000000000000000000000000000000000000000000001" as Hash,
+          confirmations: sequenceItem?.confirmations ?? requiredConfirmations,
+          requiredConfirmations,
           gasUsed,
           effectiveGasPrice,
           fromAddress: transaction.from,
@@ -390,7 +417,7 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
         await assertChainIdMatches(options);
         const client = createEvmPublicClient(options);
         if (!client) {
-          return { hash, family, network, status: "pending", providerUrl, polledAt };
+          return { hash, family, network, status: "pending", observationStatus: "not_found", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
         }
         const [transaction, receipt] = await Promise.all([
           client.getTransaction({ hash }).catch(() => undefined),
@@ -398,7 +425,7 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
         ]);
 
         if (!receipt) {
-          return { hash, family, network, status: "pending", providerUrl, polledAt };
+          return { hash, family, network, status: "pending", observationStatus: transaction ? "pending" : "not_found", providerUrl, polledAt, confirmations: 0, requiredConfirmations, nonce: transaction?.nonce };
         }
 
         const verification = verifyReceiptEffects(
@@ -437,11 +464,14 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
           };
         }
 
+        const head = await client.getBlockNumber().catch(() => receipt.blockNumber);
+        const confirmations = Number(head >= receipt.blockNumber ? head - receipt.blockNumber + BigInt(1) : BigInt(0));
         return {
           hash,
           family,
           network,
-          status: "confirmed",
+          status: confirmations >= requiredConfirmations ? "confirmed" : "confirming",
+          observationStatus: "included",
           providerUrl,
           polledAt,
           blockNumber: receipt.blockNumber,
@@ -452,6 +482,9 @@ export function getEvmChainAdapter(options: EvmAdapterOptions): {
           fromAddress: transaction?.from,
           toAddress: transaction?.to ?? receipt.contractAddress ?? undefined,
           matchedEffects: true,
+          confirmations,
+          requiredConfirmations,
+          nonce: transaction?.nonce,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : "EVM RPC polling failed.";

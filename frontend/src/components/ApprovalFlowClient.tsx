@@ -55,12 +55,6 @@ export function ApprovalFlowClient({
   const [payload, setPayload] = useState<PreparedTransactionPayload | null>(null);
 
   // Auto-validate when the component mounts
-  useEffect(() => {
-    if (state.phase === "idle") {
-      validateApproval();
-    }
-  }, []);
-
   const validateApproval = useCallback(async () => {
     setState({ phase: "validating" });
 
@@ -116,6 +110,12 @@ export function ApprovalFlowClient({
       });
     }
   }, [idempotencyKey, walletAddress, chainFamily, network, sourceAccount, session.address, stellar.network, evm.chain, evm.chainId]);
+
+  useEffect(() => {
+    if (state.phase !== "idle") return;
+    const timer = window.setTimeout(() => void validateApproval(), 0);
+    return () => window.clearTimeout(timer);
+  }, [state.phase, validateApproval]);
 
   const handleSignAndSubmit = useCallback(async () => {
     if (state.phase !== "ready_for_signing" || !payload) return;
@@ -463,7 +463,7 @@ function EvmPayloadDetails({ payload }: { payload: EvmPreparedTransactionPayload
         <span className="text-slate-400">Calldata (truncated)</span>
         <span className="break-all font-mono text-[10px] text-slate-300">{calldataPreview}</span>
       </div>
-      {payload.displayParams?.expectedEffects && (
+      {Array.isArray(payload.displayParams?.expectedEffects) && (
         <div>
           <span className="text-slate-400">Expected effects</span>
           <ul className="mt-1 space-y-1 pl-2">
@@ -658,8 +658,9 @@ function StatusPanel({
     case "submitted":
       return (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4">
-          <div className="text-sm font-semibold text-emerald-200">Transaction submitted</div>
+          <div className="text-sm font-semibold text-sky-200">Transaction broadcast</div>
           <div className="mt-1 text-xs text-slate-400">Hash: {state.txHash}</div>
+          <p className="mt-2 text-xs text-white/55">Broadcast acceptance is not finality. Wait for the required confirmation depth; replacement, reorg, or provider disagreement will require review.</p>
           {onClose && (
             <button
               onClick={onClose}
