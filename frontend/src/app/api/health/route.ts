@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiCacheStrategy } from "@/server/cache/strategy";
-import { getAgentReadiness, getEnvHealth } from "@/server/env/validation";
+import { getAgentReadiness, getEnvHealth, getFeatureFlagHealth } from "@/server/env/validation";
 import { getRuntimeModeHealth } from "@/server/env/runtimeMode";
 import { getSecurityHealth } from "@/server/security/policy";
 import { getStorageCounts, getStorageHealth, listAgentRunRecords, listAlerts } from "@/server/storage";
@@ -38,6 +38,7 @@ export function GET() {
       executionAudit: auditSummary,
       runbooks,
       disableFlags,
+      featureFlags: getFeatureFlagHealth(),
       alerts: {
         thresholds: alertThresholds,
         status: evaluateAlertThresholds({

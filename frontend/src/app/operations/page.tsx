@@ -1,8 +1,10 @@
 import { AlertTriangle, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { knownLimitations, releaseReadinessChecks } from "@/server/operations/releaseReadiness";
+import { getFeatureFlagHealth } from "@/server/env/validation";
 
 export default function OperationsPage() {
+  const featureFlags = getFeatureFlagHealth();
   return (
     <AppShell>
       <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
@@ -61,6 +63,23 @@ export default function OperationsPage() {
           {knownLimitations.map((limitation) => (
             <div key={limitation} className="rounded-md bg-black/24 px-4 py-3 text-sm leading-6 text-white/58">
               {limitation}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10 rounded-lg border border-white/10 bg-white/6 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <ClipboardCheck className="h-4 w-4 text-[#d9a441]" />
+          Feature flags
+        </div>
+        <div className="mt-5 grid gap-2">
+          {featureFlags.flags.map((flag) => (
+            <div key={flag.key} className="flex items-center justify-between rounded-md bg-black/24 px-4 py-2 text-sm text-white/64">
+              <code className="text-white/80">{flag.key}</code>
+              <span className={flag.enabled ? "text-emerald-300" : "text-white/40"}>
+                {flag.enabled ? "enabled" : "disabled"} · {flag.reason}
+              </span>
             </div>
           ))}
         </div>

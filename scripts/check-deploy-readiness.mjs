@@ -34,6 +34,13 @@ const requiredFiles = [
   "frontend/src/app/api/history/approvals/route.ts",
   "frontend/src/app/api/history/recommendations/route.ts",
   "frontend/src/app/operations/page.tsx",
+  "frontend/src/server/features/types.ts",
+  "frontend/src/server/features/registry.ts",
+  "frontend/src/server/features/evaluator.ts",
+  "frontend/src/server/features/audit.ts",
+  "frontend/src/components/FeatureGateNotice.tsx",
+  "frontend/scripts/feature-flag-check.ts",
+  "docs/FEATURE_FLAGS.md",
 ];
 const requiredReleaseMarkers = [
   "V1 Definition of Done",

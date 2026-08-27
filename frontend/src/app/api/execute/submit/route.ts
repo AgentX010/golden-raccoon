@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/server/api/errors";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import { isWalletAddressForChain, isStellarAccountAddress, canonicalizeAddress, getChainFamily } from "@/lib/chainIdentity";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -47,6 +48,14 @@ export async function POST(request: Request) {
   const session = resolveWalletSession(request, { suppliedWallet: parsed.data.walletAddress });
   if (session.response) {
     return session.response;
+  }
+
+  const submitGate = gateFeature("execute_submit", parsed.data.walletAddress ?? "");
+  if (!submitGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "execute_submit", detail: submitGate.detail },
+      { status: 403 },
+    );
   }
 
   const walletFamily = getChainFamily(parsed.data.network);

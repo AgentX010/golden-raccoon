@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/server/api/errors";
 import { z } from "zod";
+import { gateFeature } from "@/server/features/evaluator";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { runTokenScan } from "@/server/scan/tokenScan";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -27,6 +28,14 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
+  }
+
+  const scanGate = gateFeature("scan_token", parsed.data.walletAddress ?? "");
+  if (!scanGate.enabled) {
+    return NextResponse.json(
+      { error: "feature_disabled", feature: "scan_token", detail: scanGate.detail },
+      { status: 403 },
+    );
   }
 
   const timer = createPhaseTimer();
