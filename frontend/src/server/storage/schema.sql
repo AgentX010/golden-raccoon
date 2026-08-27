@@ -209,6 +209,47 @@ create table if not exists x402_payment_receipts (
   updated_at timestamptz not null default now()
 );
 
+-- Immutable, privacy-redacted public risk report snapshots. Only revoked_at
+-- may change after insertion; the canonical hash covers the public document.
+create table if not exists risk_snapshots (
+  id text primary key,
+  schema_version text not null,
+  snapshot jsonb not null,
+  canonical_hash text not null,
+  identity_key text not null,
+  revocation_token_hash text not null,
+  created_at timestamptz not null,
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  constraint risk_snapshots_hash_format check (canonical_hash ~ '^sha256:[0-9a-f]{64}$'),
+  constraint risk_snapshots_expiry_order check (expires_at > created_at)
+);
+create index if not exists risk_snapshots_hash_idx on risk_snapshots(canonical_hash);
+create index if not exists risk_snapshots_identity_created_idx on risk_snapshots(identity_key, created_at desc);
+create index if not exists risk_snapshots_expiry_idx on risk_snapshots(expires_at) where revoked_at is null;
+
+create or replace function enforce_risk_snapshot_immutability()
+returns trigger language plpgsql as $$
+begin
+  if new.id is distinct from old.id
+    or new.schema_version is distinct from old.schema_version
+    or new.snapshot is distinct from old.snapshot
+    or new.canonical_hash is distinct from old.canonical_hash
+    or new.identity_key is distinct from old.identity_key
+    or new.revocation_token_hash is distinct from old.revocation_token_hash
+    or new.created_at is distinct from old.created_at
+    or new.expires_at is distinct from old.expires_at
+    or (old.revoked_at is not null and new.revoked_at is distinct from old.revoked_at)
+  then
+    raise exception 'risk snapshots are immutable except for first revocation';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists risk_snapshots_immutable on risk_snapshots;
+create trigger risk_snapshots_immutable before update on risk_snapshots
+for each row execute function enforce_risk_snapshot_immutability();
+
 -- V3 emergency pause / agent revoke / allowance / trustline recovery
 create table if not exists recovery_requests (
   id uuid primary key default gen_random_uuid(),

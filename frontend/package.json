@@ -21,7 +21,8 @@
     "test:feature-flags": "tsx --tsconfig tsconfig.json scripts/feature-flag-check.ts",
     "test:audit-export": "tsx --tsconfig tsconfig.json scripts/audit-export-check.ts",
     "test:watchlist": "tsx --tsconfig tsconfig.json scripts/watchlist-portability-check.ts",
-    "test:portfolio-stress": "tsx --tsconfig tsconfig.json scripts/portfolio-stress-check.ts"
+    "test:portfolio-stress": "tsx --tsconfig tsconfig.json scripts/portfolio-stress-check.ts",
+    "test:risk-snapshots": "tsx --tsconfig tsconfig.json scripts/risk-snapshot-check.ts"
   },
   "dependencies": {
     "@coinbase/x402": "^2.1.0",
