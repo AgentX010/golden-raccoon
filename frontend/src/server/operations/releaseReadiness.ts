@@ -12,6 +12,10 @@ export const releaseReadinessChecks = [
     detail: "The deployed URL must pass health, agent, scan, decision, x402 payment-required, and execution prepare smoke checks.",
   },
   {
+    title: "Contract artifact provenance",
+    detail: "EVM creation bytecode and Soroban WASM release artifacts must match a release-approved provenance manifest verified offline.",
+  },
+  {
     title: "Rollback plan",
     detail: "The previous deployment stays available until smoke and the first monitoring pass succeed.",
   },
@@ -59,6 +63,20 @@ export const executionDisableSwitches = [
   { env: "DISABLE_X402_SETTLEMENT", effect: "Returns 402 without attempting settlement. Free-tier features unaffected." },
 ];
 
+export type ArtifactProvenanceStatus = "unchecked" | "verified" | "failed";
+
+/**
+ * Safe provenance status for readiness/health surfaces.
+ * Never returns secrets, paths with credentials, or manifest contents.
+ */
+export function getArtifactProvenanceHealth(): { status: ArtifactProvenanceStatus } {
+  const raw = process.env.ARTIFACT_PROVENANCE_STATUS;
+  if (raw === "verified" || raw === "failed" || raw === "unchecked") {
+    return { status: raw };
+  }
+  return { status: "unchecked" };
+}
+
 export function getReleaseReadinessHealth() {
   return {
     gate: "npm run deploy:check",
@@ -68,5 +86,6 @@ export function getReleaseReadinessHealth() {
     checks: releaseReadinessChecks,
     knownLimitations,
     executionDisableSwitches,
+    artifactProvenance: getArtifactProvenanceHealth(),
   };
 }

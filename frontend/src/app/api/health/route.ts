@@ -13,6 +13,7 @@ import { runbookToReadinessCheck, listRunbooks } from "@/server/observability/ru
 import { slos, calculateSlo } from "@/server/observability/slo";
 import { getRecentApiLatency, getApiTimingSampleCount } from "@/server/observability/timing";
 import { generateIncidentTimeline } from "@/server/observability/incidentTimeline";
+import { getArtifactProvenanceHealth } from "@/server/operations/releaseReadiness";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export async function GET() {
       performance: getPerformanceHealth(),
       metrics,
       executionAudit: auditSummary,
+      artifactProvenance: getArtifactProvenanceHealth(),
       runbooks,
       disableFlags,
       featureFlags: getFeatureFlagHealth(),

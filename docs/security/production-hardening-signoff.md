@@ -70,7 +70,8 @@
 | Deploy procedure tested on testnet | `[ ]` | |
 | Rollback procedure tested on testnet | `[ ]` | < 15 minutes |
 | Emergency pause tested on testnet | `[ ]` | < 2 minutes |
-| Hash freeze manifest generated | `[ ]` | |
+| Hash freeze manifest generated | `[ ]` | `npm run provenance:freeze -- --write --release` |
+| Contract artifact provenance verified | `[ ]` | `npm run provenance:verify -- --strict` |
 | Monitoring dashboards verified | `[ ]` | |
 | Alerting configured and tested | `[ ]` | |
 

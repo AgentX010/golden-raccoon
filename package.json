@@ -26,7 +26,11 @@
     "sbom:generate": "node scripts/generate-sbom.mjs",
     "supply-chain:policy": "node scripts/verify-dependency-policy.mjs",
     "supply-chain:policy:audit": "node scripts/verify-dependency-policy.mjs --audit",
-    "provenance:verify": "node scripts/verify-build-provenance.mjs verify all"
+    "provenance:verify": "node scripts/verify-build-provenance.mjs verify all",
+    "build:evm": "bash scripts/build-evm.sh",
+    "build:soroban": "bash scripts/build-soroban.sh",
+    "provenance:freeze": "node scripts/hash-freeze-build.mjs",
+    "provenance:verify:artifacts": "node scripts/verify-artifact-provenance.mjs"
   },
   "dependencies": {
     "next": "16.2.9",

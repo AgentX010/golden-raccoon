@@ -14,17 +14,20 @@
  *    gated behind separate security approval, which a script cannot grant.
  * 4. The artifact record is written from what the toolchain actually reported,
  *    so a value in it is evidence rather than an expectation.
+ * 5. A verified provenance manifest path is required before deploy. The
+ *    manifest is checked offline; secrets never enter the manifest or logs.
  *
  * Usage:
- *   node scripts/deploy-audit-layer.mjs --chain evm     --network <name> [--dry-run]
- *   node scripts/deploy-audit-layer.mjs --chain soroban --network <name> [--dry-run]
+ *   node scripts/deploy-audit-layer.mjs --chain evm     --network <name> --manifest <path> [--dry-run]
+ *   node scripts/deploy-audit-layer.mjs --chain soroban --network <name> --manifest <path> [--dry-run]
  */
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyProvenanceManifest } from "./verify-artifact-provenance.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -82,7 +85,7 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (token === "--chain" || token === "--network" || token === "--out") {
+    if (token === "--chain" || token === "--network" || token === "--out" || token === "--manifest") {
       const value = argv[index + 1];
 
       if (!value || value.startsWith("--")) {
@@ -273,6 +276,22 @@ function deployEvm(network, config, dryRun) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
 
+  if (!args.manifest) {
+    fail("--manifest <path> is required. Deploy only after offline provenance verification.");
+  }
+
+  const manifestRel = relative(root, resolve(root, args.manifest)).replaceAll("\\", "/");
+  if (manifestRel.startsWith("..")) {
+    fail("--manifest must point to a path inside the repository");
+  }
+
+  console.log(`Verifying provenance manifest: ${manifestRel}`);
+  const provenance = verifyProvenanceManifest(manifestRel, { strict: true });
+  if (!provenance.valid) {
+    fail(`provenance verification failed: ${provenance.reason}`);
+  }
+  console.log("Provenance verification passed.");
+
   if (!args.chain) {
     fail("--chain is required (evm or soroban)");
   }
@@ -319,6 +338,8 @@ function main() {
     ...result,
     commit,
     workingTreeClean: clean,
+    provenanceManifest: manifestRel,
+    provenanceCommit: provenance.manifestMeta?.commit ?? null,
     deployedAt: new Date().toISOString(),
   };
 

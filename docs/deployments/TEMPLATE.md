@@ -29,9 +29,12 @@ record that points at it.
 | Commit SHA | |
 | Working tree clean at deploy | yes / no |
 | Artifact record | `docs/deployments/<chain>-<network>.json` |
+| Provenance manifest | `release-manifests/<manifest>.json` |
 
 A record whose commit does not describe the deployed source is not evidence. The
-deploy script refuses to run against a dirty tree for this reason.
+deploy script refuses to run against a dirty tree for this reason. Deploy scripts
+also require `--manifest` / a manifest path argument and offline verification
+(`npm run provenance:verify -- --strict`) before broadcasting.
 
 ## Toolchain
 
@@ -51,7 +54,15 @@ deploy script refuses to run against a dirty tree for this reason.
 |---|---|
 | WASM SHA-256 (Soroban) | |
 | Creation bytecode SHA-256 (EVM) | |
+| Solidity metadata SHA-256 (EVM) | |
 | ABI SHA-256 (EVM) | |
+
+## Build provenance
+
+- [ ] Manifest generated via `npm run provenance:freeze -- --write --release`
+- [ ] Offline verification passed via `npm run provenance:verify -- --strict`
+- [ ] Manifest contains no secrets, credential URLs, or absolute user paths
+- [ ] Dual clean CI builds produced matching artifact hashes
 
 ## Verification performed
 

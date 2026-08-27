@@ -1,6 +1,6 @@
-# Golden Raccoon Risk Registry
+# Golden Raccoon Soroban contracts
 
-Soroban contract for publishing tamper-evident Golden Raccoon risk records. Reports remain off-chain; the contract stores their SHA-256 digest, score, verdict, publisher, network and update time.
+Workspace crates: policy, vault, risk-registry, and audit-registry. Reports remain off-chain where applicable; digests and policy state are stored on-chain.
 
 ## Local verification
 
@@ -11,4 +11,19 @@ cargo test --manifest-path soroban/Cargo.toml
 stellar contract build --manifest-path soroban/Cargo.toml
 ```
 
-Deployment and initialization are handled by `scripts/stellar-deploy.sh`. Never commit a Stellar secret key. Generated WASM under `soroban/target/` must stay untracked.
+CI and `scripts/build-soroban.sh` use `stellar contract build` with the `wasm32v1-none` target. Expected release WASM basenames:
+
+- `golden_raccoon_policy.wasm`
+- `golden_raccoon_vault.wasm`
+- `golden_raccoon_risk_registry.wasm`
+- `golden_raccoon_audit_registry.wasm`
+
+## Provenance
+
+```bash
+npm run build:soroban
+npm run provenance:freeze -- --write --release
+npm run provenance:verify -- --strict
+```
+
+Deployment helpers require a verified manifest path. Never commit a Stellar secret key. Generated WASM under `soroban/target/` must stay untracked. See `docs/BUILD_PROVENANCE.md`.

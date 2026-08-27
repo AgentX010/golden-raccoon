@@ -7,6 +7,12 @@ const config: HardhatUserConfig = {
     settings: {
       viaIR: true,
       optimizer: { enabled: true, runs: 200 },
+      // Pinned to match reproducible build scripts and provenance claims.
+      evmVersion: "paris",
+      metadata: {
+        bytecodeHash: "ipfs",
+        useLiteralContent: true,
+      },
     },
   },
   networks: {
