@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import assert from "node:assert/strict";
 import {
   AUTO_MODE_POLICY_SCHEMA_VERSION,

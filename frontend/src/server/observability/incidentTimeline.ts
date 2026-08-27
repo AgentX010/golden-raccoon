@@ -45,7 +45,9 @@ export function generateIncidentTimeline(rawEvents: any[]): IncidentEvent[] {
 function redact(text: string): string {
   // basic redaction of wallet, asset, payload
   return text
-    .replace(/0x[a-fA-F0-9]{40}/g, "[REDACTED_WALLET]")
+    .replace(/0x[a-fA-F0-9]{40}/gi, "[REDACTED_WALLET]")
+    .replace(/\bG[A-Z2-7]{55}\b/g, "[REDACTED_WALLET]")
+    .replace(/\bS[A-Z2-7]{55}\b/g, "[REDACTED_SECRET]")
     .replace(/"payload":\s*\{.*?\}/g, '"payload": [REDACTED]')
-    .replace(/asset=[a-zA-Z0-9]+/g, "asset=[REDACTED]");
+    .replace(/asset=[a-zA-Z0-9]+/gi, "asset=[REDACTED]");
 }

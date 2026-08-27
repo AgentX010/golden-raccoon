@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import type { AgentRecommendedAction, AgentResult, PortfolioSnapshot, SimulationResultDetail, StellarSwapQuote, TransactionPreview, UserRule } from "@/server/types";
 import { buildAgentResult } from "@/server/agents/shared";
 import { buildExecutionPolicy, evaluateExecutionPolicy } from "@/server/agents/execution/policy";

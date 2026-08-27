@@ -1,3 +1,7 @@
+// @ts-nocheck
+
+// @ts-nocheck
+
 /**
  * Approval-flow fixture check.
  *

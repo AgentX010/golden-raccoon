@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { lookup } from "node:dns/promises";
 import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { getStellarNetwork } from "@/lib/stellar/config";

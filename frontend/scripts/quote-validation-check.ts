@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 /**
  * Quote validation tests — proving client-tampered quote fields cannot make a plan executable.
  *

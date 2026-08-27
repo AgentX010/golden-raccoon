@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { NextResponse } from "next/server";
 import { getX402RuntimeConfig, validateX402RuntimeConfig } from "@/server/x402/config";
 

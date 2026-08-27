@@ -34,7 +34,7 @@ describe('Incident Timeline Deduplication & Redaction', () => {
     const rawEvents = [
       { id: 'inc-1', timestamp: 1000, type: 'open', description: 'wallet 0x1234567890123456789012345678901234567890 issue' },
       { id: 'inc-1', timestamp: 2000, type: 'update', description: 'still issue with 0x1234567890123456789012345678901234567890' },
-      { id: 'inc-1', timestamp: 3000, type: 'recover', description: 'resolved wallet 0x1234567890123456789012345678901234567890 asset=USDC "payload": {"foo": "bar"}' }
+      { id: 'inc-1', timestamp: 3000, type: 'recover', description: 'resolved wallet GCO26XZOAAZEMBXUBKOP5Y2D4D3ZNNV65VOKMUDJ5PZJB5F3BFF6IUU6 asset=USDC "payload": {"foo": "bar"}' }
     ];
 
     const timeline = generateIncidentTimeline(rawEvents);

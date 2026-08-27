@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "echo 'Skipping build'",
+    "build": "next build",
     "start": "next start",
     "deploy:check": "node ../scripts/check-deploy-readiness.mjs",
-    "lint": "echo 'Skipping lint'",
+    "lint": "eslint",
     "test:agents": "tsx --tsconfig tsconfig.json scripts/agent-fixture-check.ts",
     "test:auto-mode": "node --import tsx scripts/auto-mode-fixture-check.ts",
     "test:alerts": "tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",

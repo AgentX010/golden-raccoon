@@ -34,8 +34,6 @@ export function getResultMetrics(results: AgentResult[]) {
   return getAgentRunMetrics([
     {
       id: "inline",
-      chainFamily: "evm",
-      network: "legacy-evm",
       walletAddress: "inline",
       status: "completed",
       recommendation: "manual_review",

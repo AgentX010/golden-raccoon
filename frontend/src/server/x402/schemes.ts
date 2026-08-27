@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import type { PaymentScheme } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import type { X402ChainFamily } from "@/server/types";

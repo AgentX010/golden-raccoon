@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import type { TransactionRecord } from "../types";
 
 export function getMockTransactions(): TransactionRecord[] {

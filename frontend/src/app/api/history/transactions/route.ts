@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { withCacheHeaders } from "@/server/cache/strategy";

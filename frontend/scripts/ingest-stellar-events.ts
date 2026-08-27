@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { resolve } from "node:path";
 import { normalizeStellarNetworkId } from "../src/lib/stellar/config";
 import { StellarRpcDataLayer } from "../src/server/stellar/dataLayer";

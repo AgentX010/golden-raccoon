@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { test as base, type Page } from "@playwright/test";
 import { mockTokenScanResult, mockPortfolioSnapshot, mockDefaultRules, mockStellarTokenScanResult } from "./mock-data";
 

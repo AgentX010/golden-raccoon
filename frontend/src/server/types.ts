@@ -1320,3 +1320,4 @@ export type ApproveTransactionInput = {
   network: string;
   sourceAccount?: string;
 };
+export const RECOVERY_RULES_VERSION = "1.0.0";
