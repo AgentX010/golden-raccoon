@@ -1,18 +1,5 @@
 import type { AgentResult } from "@/server/types";
 
-const secretPatterns = [
-  /Bearer\s+[A-Za-z0-9._-]+/g,
-  /sk-[A-Za-z0-9._-]+/g,
-  /cqt_[A-Za-z0-9._-]+/g,
-  /(api[_-]?key=)[^&\s]+/gi,
-  /(authorization["']?\s*:\s*["'])[^"']+(["'])/gi,
-  // Execution-specific: signed XDR, calldata, payment headers, Stellar secrets
-  /(AAAAA[gG].{20,})/g,
-  /(0x02[fF][0-9a-fA-F]{20,})/g,
-  /(x-payment-header:\s*)([^,\n]+)/gi,
-  /(S[A-Z0-9]{55})/g,
-];
-
 export type StructuredAgentLog = {
   runId?: string;
   agent: AgentResult["agent"];
@@ -25,17 +12,21 @@ export type StructuredAgentLog = {
 };
 
 export function redactSecrets(value: unknown): string {
-  let serialized = typeof value === "string" ? value : JSON.stringify(value);
-
-  for (const pattern of secretPatterns) {
-    serialized = serialized.replace(pattern, (match, prefix, suffix) => {
-      if (prefix && suffix) return `${prefix}[REDACTED]${suffix}`;
-      if (match.startsWith("Bearer ")) return "Bearer [REDACTED]";
-      if (match.startsWith("api_key=")) return "api_key=[REDACTED]";
-      return "[REDACTED]";
-    });
-  }
-
+  let serialized = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
+  serialized = serialized
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, "Bearer [REDACTED]")
+    .replace(/sk-[A-Za-z0-9._-]+/g, "[REDACTED]")
+    .replace(/cqt_[A-Za-z0-9._-]+/g, "[REDACTED]")
+    .replace(/(api[_-]?key=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/(authorization["']?\s*:\s*["'])[^"']+(["'])/gi, "$1[REDACTED]$2")
+    .replace(/AAAAA[gG].{20,}/g, "[REDACTED]")
+    .replace(/0x02[fF][0-9a-fA-F]{20,}/g, "[REDACTED]")
+    .replace(/(x-payment-header:\s*)([^,\n]+)/gi, "$1[REDACTED]")
+    .replace(/S[A-Z0-9]{55}/g, "[REDACTED]")
+    .replace(/(https?:\/\/)[^/@\s]+@/gi, "$1[REDACTED]@")
+    .replace(/([?&](?:token|key|api[_-]?key|secret|authorization)=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/\bG[A-Z2-7]{55}\b/g, "[WALLET_REDACTED]")
+    .replace(/\b0x[a-fA-F0-9]{40}\b/g, "[WALLET_REDACTED]");
   return serialized;
 }
 

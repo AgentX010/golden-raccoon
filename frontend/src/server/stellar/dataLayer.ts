@@ -14,6 +14,8 @@ import {
   type StellarNetworkConfig,
   type StellarNetworkId,
 } from "@/lib/stellar/config";
+import { redactProviderUrl } from "@/lib/stellar/failover";
+import { sharedProviderCircuits } from "@/server/providers/adapter";
 
 export type StellarRpcTransport = Pick<
   rpc.Server,
@@ -341,8 +343,11 @@ export class StellarRpcDataLayer {
     const startedAt = this.now();
     const checkedAt = new Date(startedAt).toISOString();
     const transport = this.transportFactory(providerUrl, requestId);
+    const safeProviderUrl = redactProviderUrl(providerUrl);
+    const circuitKey = `stellar-rpc:${this.network.id}:${safeProviderUrl}`;
 
     try {
+      sharedProviderCircuits.acquire(circuitKey);
       const [health, network, latestLedger] = await withTimeout(
         () =>
           Promise.all([
@@ -356,9 +361,10 @@ export class StellarRpcDataLayer {
       const latencyMs = this.now() - startedAt;
 
       if (network.passphrase !== this.network.networkPassphrase) {
+        sharedProviderCircuits.failure(circuitKey, latencyMs, false);
         return {
           transport,
-          providerUrl,
+          providerUrl: safeProviderUrl,
           healthy: false,
           passphrase: network.passphrase,
           protocolVersion: network.protocolVersion,
@@ -366,15 +372,16 @@ export class StellarRpcDataLayer {
           latencyMs,
           checkedAt,
           errorCode: "network_mismatch",
-          error: `${providerUrl} serves a different Stellar network.`,
+          error: `${safeProviderUrl} serves a different Stellar network.`,
         };
       }
       if (
         Number(network.protocolVersion) < this.network.expectedProtocolVersion
       ) {
+        sharedProviderCircuits.failure(circuitKey, latencyMs);
         return {
           transport,
-          providerUrl,
+          providerUrl: safeProviderUrl,
           healthy: false,
           passphrase: network.passphrase,
           protocolVersion: network.protocolVersion,
@@ -382,13 +389,15 @@ export class StellarRpcDataLayer {
           latencyMs,
           checkedAt,
           errorCode: "rpc_error",
-          error: `${providerUrl} protocol ${network.protocolVersion} is below required ${this.network.expectedProtocolVersion}.`,
+          error: `${safeProviderUrl} protocol ${network.protocolVersion} is below required ${this.network.expectedProtocolVersion}.`,
         };
       }
 
+      if (health.status === "healthy") sharedProviderCircuits.success(circuitKey, latencyMs);
+      else sharedProviderCircuits.failure(circuitKey, latencyMs);
       return {
         transport,
-        providerUrl,
+        providerUrl: safeProviderUrl,
         healthy: health.status === "healthy",
         passphrase: network.passphrase,
         protocolVersion: network.protocolVersion,
@@ -398,19 +407,20 @@ export class StellarRpcDataLayer {
         error:
           health.status === "healthy"
             ? undefined
-            : `${providerUrl} reported ${health.status}.`,
+            : `${safeProviderUrl} reported ${health.status}.`,
         errorCode: health.status === "healthy" ? undefined : "rpc_error",
       };
     } catch (error) {
       const classified = classifyError(error);
+      sharedProviderCircuits.failure(circuitKey, this.now() - startedAt, classified.retryable);
       return {
         transport,
-        providerUrl,
+        providerUrl: safeProviderUrl,
         healthy: false,
         latencyMs: this.now() - startedAt,
         checkedAt,
         errorCode: classified.code,
-        error: errorMessage(error),
+        error: errorMessage(error).replaceAll(providerUrl, safeProviderUrl),
       };
     }
   }

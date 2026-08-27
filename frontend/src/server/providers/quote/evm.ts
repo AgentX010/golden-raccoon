@@ -11,7 +11,7 @@
  */
 import "server-only";
 
-import { runProviderAdapter } from "@/server/providers/adapter";
+import { ProviderRequestError, runProviderAdapter } from "@/server/providers/adapter";
 import { getScanNetwork } from "@/lib/scanNetworks";
 import { getChainFamily } from "@/lib/chainIdentity";
 import {
@@ -72,7 +72,16 @@ function cacheSet(key: string, pairs: DexScreenerPair[]) {
 
 const DEXSCREENER_BASE = "https://api.dexscreener.com";
 
-async function fetchTokenPairs(chain: string, tokenAddress: string): Promise<DexScreenerPair[]> {
+function retryAfterMs(response: Response) {
+  const header = response.headers.get("retry-after");
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
+  const date = Date.parse(header);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : undefined;
+}
+
+async function fetchTokenPairs(chain: string, tokenAddress: string, signal?: AbortSignal): Promise<DexScreenerPair[]> {
   const cacheKey = `${chain}:${tokenAddress}`.toLowerCase();
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
@@ -84,17 +93,23 @@ async function fetchTokenPairs(chain: string, tokenAddress: string): Promise<Dex
     try {
       const url = `${DEXSCREENER_BASE}/tokens/v1/${tokenAddress}`;
       const response = await fetch(url, {
-        signal: AbortSignal.timeout(8_000),
+        signal,
         headers: { Accept: "application/json" },
       });
 
       if (!response.ok) {
-        if (response.status === 429) return [];
         if (response.status === 404) return [];
-        return [];
+        throw new ProviderRequestError(
+          `DexScreener returned HTTP ${response.status}.`,
+          response.status === 429 ? "rate_limited" : "provider_error",
+          { retryable: response.status === 429 || response.status >= 500, status: response.status, retryAfterMs: retryAfterMs(response) },
+        );
       }
 
       const data = (await response.json()) as DexScreenerPair[] | { pairs?: DexScreenerPair[] };
+      if (!Array.isArray(data) && !Array.isArray(data.pairs)) {
+        throw new ProviderRequestError("DexScreener returned malformed pair data.", "malformed_response", { retryable: true });
+      }
       const pairsArray = Array.isArray(data) ? data : (data as Record<string, unknown>).pairs as DexScreenerPair[] ?? [];
       const filtered = pairsArray.filter((p) => p.chainId === chain.toLowerCase());
 
@@ -137,20 +152,16 @@ function findBestPair(
 
 // ─── Thrown-errors operation ─────────────────────────────────────────
 
-async function runEvmQuoteOperation(request: QuoteRequest): Promise<QuoteResult> {
+async function runEvmQuoteOperation(request: QuoteRequest, signal?: AbortSignal): Promise<QuoteResult> {
   const chainFamily = getChainFamily(request.chain);
   if (chainFamily === "stellar") {
-    const err = new Error(`EVM adapter does not support Stellar chain: ${request.chain}`);
-    (err as any).code = "unsupported_chain";
-    throw err;
+    throw new ProviderRequestError(`EVM adapter does not support Stellar chain: ${request.chain}`, "invalid_request");
   }
 
   const scanNetwork = getScanNetwork(request.chain);
   const dsChainId = scanNetwork ? resolveDexScreenerChainId(scanNetwork) : null;
   if (!dsChainId) {
-    const err = new Error(`Chain ${request.chain} is not supported by DexScreener`);
-    (err as any).code = "unsupported_chain";
-    throw err;
+    throw new ProviderRequestError(`Chain ${request.chain} is not supported by DexScreener`, "invalid_request");
   }
 
   const fromAddress = request.fromAssetMeta?.contractAddress || request.fromAsset;
@@ -158,35 +169,27 @@ async function runEvmQuoteOperation(request: QuoteRequest): Promise<QuoteResult>
   const toSymbol = request.toAssetMeta?.symbol || request.toAsset;
 
   // Fetch token pairs from DexScreener
-  const pairs = await fetchTokenPairs(dsChainId, fromAddress);
+  const pairs = await fetchTokenPairs(dsChainId, fromAddress, signal);
 
   if (pairs.length === 0) {
-    const err = new Error(`No DexScreener pairs found for ${fromSymbol} on ${dsChainId}.`);
-    (err as any).code = "no_route";
-    throw err;
+    throw new ProviderRequestError(`No DexScreener pairs found for ${fromSymbol} on ${dsChainId}.`, "invalid_request");
   }
 
   // Find the best pair against the destination token
   const bestPair = findBestPair(pairs, toSymbol);
 
   if (!bestPair || !bestPair.liquidity) {
-    const err = new Error(`No active ${fromSymbol}/${toSymbol} trading pair found on ${dsChainId}.`);
-    (err as any).code = "no_route";
-    throw err;
+    throw new ProviderRequestError(`No active ${fromSymbol}/${toSymbol} trading pair found on ${dsChainId}.`, "invalid_request");
   }
 
   const priceUsd = Number.parseFloat(bestPair.priceUsd);
   if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
-    const err = new Error(`Malformed price data from DexScreener for ${fromSymbol}.`);
-    (err as any).code = "malformed_response";
-    throw err;
+    throw new ProviderRequestError(`Malformed price data from DexScreener for ${fromSymbol}.`, "malformed_response", { retryable: true });
   }
 
   const numericAmount = Number.parseFloat(request.amount);
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-    const err = new Error(`Invalid swap amount: ${request.amount}`);
-    (err as any).code = "invalid_request";
-    throw err;
+    throw new ProviderRequestError(`Invalid swap amount: ${request.amount}`, "invalid_request");
   }
 
   const liquidityUsd = bestPair.liquidity.usd;
@@ -244,8 +247,10 @@ export async function getEvmQuote(
   request: QuoteRequest,
   config: QuoteProviderConfig = defaultQuoteProviderConfig,
 ): Promise<QuoteResult> {
+  const scanNetwork = getScanNetwork(request.chain);
+  const chainId = scanNetwork?.goPlusChainId ? Number(scanNetwork.goPlusChainId) : undefined;
   const result = await runProviderAdapter(
-    () => runEvmQuoteOperation(request),
+    (signal) => runEvmQuoteOperation(request, signal),
     {
       kind: "execution",
       provider: "dexscreener",
@@ -253,6 +258,9 @@ export async function getEvmQuote(
       timeoutMs: config.timeoutMs,
       retries: config.retries,
       backoffMs: config.backoffMs,
+      identity: { family: "evm", network: request.chain, chainId },
+      expectedIdentity: { family: "evm", network: request.chain, chainId },
+      validate: (value) => Boolean(value && typeof value === "object" && "expiresAt" in value && "providerMeta" in value),
     },
   );
 

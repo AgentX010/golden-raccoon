@@ -8,7 +8,7 @@ import { getPerformanceHealth, getProductionHealth } from "@/server/observabilit
 import { getAgentRunMetrics } from "@/server/observability/metrics";
 import { alertThresholds, evaluateAlertThresholds } from "@/server/observability/alerts";
 import { getAuditEventSummary } from "@/server/observability/executionAudit";
-import { getExecutionDisableFlags } from "@/server/observability/providerHealth";
+import { getExecutionDisableFlags, getProviderCircuitHealth } from "@/server/observability/providerHealth";
 import { runbookToReadinessCheck, listRunbooks } from "@/server/observability/runbooks";
 import { slos, calculateSlo } from "@/server/observability/slo";
 import { getRecentApiLatency, getApiTimingSampleCount } from "@/server/observability/timing";
@@ -96,6 +96,7 @@ export async function GET() {
       featureFlags: getFeatureFlagHealth(),
       slos: calculatedSlos,
       incidentTimeline: timeline,
+      providerCircuits: getProviderCircuitHealth(),
       alerts: {
         thresholds: alertThresholds,
         status: evaluateAlertThresholds({

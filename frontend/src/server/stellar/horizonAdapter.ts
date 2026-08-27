@@ -10,6 +10,8 @@ import {
   type StellarProviderAttempt,
   type StellarProviderMetadata,
 } from "@/server/stellar/dataLayer";
+import { redactProviderUrl } from "@/lib/stellar/failover";
+import { sharedProviderCircuits } from "@/server/providers/adapter";
 
 export type StellarAccountRecord = Awaited<
   ReturnType<Horizon.Server["loadAccount"]>
@@ -116,9 +118,12 @@ export class HorizonAccountDataAdapter implements StellarAccountDataAdapter {
     const startedAt = this.options.now();
 
     for (const [providerIndex, providerUrl] of urls.entries()) {
+      const safeProviderUrl = redactProviderUrl(providerUrl);
+      const circuitKey = `stellar-horizon:${networkId}:${safeProviderUrl}`;
       for (let attempt = 0; attempt <= this.options.retryLimit; attempt += 1) {
         const attemptStartedAt = this.options.now();
         try {
+          sharedProviderCircuits.acquire(circuitKey);
           const server = (this.options.serverFactory ?? defaultServerFactory)(
             providerUrl,
             requestId,
@@ -132,8 +137,9 @@ export class HorizonAccountDataAdapter implements StellarAccountDataAdapter {
             typeof account.last_modified_ledger === "number"
               ? account.last_modified_ledger
               : undefined;
+          sharedProviderCircuits.success(circuitKey, this.options.now() - attemptStartedAt);
           attempts.push({
-            providerUrl,
+            providerUrl: safeProviderUrl,
             stage: "operation",
             attempt: attempt + 1,
             ok: true,
@@ -152,7 +158,7 @@ export class HorizonAccountDataAdapter implements StellarAccountDataAdapter {
             meta: {
               requestId,
               network: networkId,
-              providerUrl,
+              providerUrl: safeProviderUrl,
               fallbackUsed,
               checkedAt: new Date(startedAt).toISOString(),
               freshnessMs: 0,
@@ -168,17 +174,18 @@ export class HorizonAccountDataAdapter implements StellarAccountDataAdapter {
           };
         } catch (error) {
           const failure = classify(error);
+          sharedProviderCircuits.failure(circuitKey, this.options.now() - attemptStartedAt, failure.retryable);
           attempts.push({
-            providerUrl,
+            providerUrl: safeProviderUrl,
             stage: "operation",
             attempt: attempt + 1,
             ok: false,
             latencyMs: this.options.now() - attemptStartedAt,
             errorCode: failure.code,
-            error: failure.message,
+            error: failure.message.replaceAll(providerUrl, safeProviderUrl),
           });
           if (!failure.retryable || attempt === this.options.retryLimit) break;
-          await this.options.sleep(100 * (attempt + 1));
+          await this.options.sleep(Math.round(100 * 2 ** attempt * (0.75 + Math.random() * 0.5)));
         }
       }
     }

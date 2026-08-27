@@ -265,6 +265,37 @@ access but does not impact free-tier functionality.
 
 ## General Guidance
 
+## RB-007: Every eligible provider circuit is open
+
+**Severity:** Critical
+**Disable switch:** `RECOMMENDATION_ONLY_MODE=true`
+
+### Detection
+- `/api/health` reports every entry in `providerCircuits` as `open`
+- `monitor:production` exits non-zero with the all-circuits-open message
+- User surfaces report providers as unavailable; no mock result is returned
+
+### Diagnosis
+1. Correlate failures by provider/network and request ID; do not paste raw endpoint URLs into tickets.
+2. Confirm whether failures are timeouts, 429/5xx responses, malformed payloads, or ledger lag.
+3. Verify the configured EVM chain ID or Stellar passphrase before considering a fallback.
+4. Run `npm --prefix frontend run test:provider-resilience` to rule out a policy regression.
+
+### Containment
+- Enable recommendation-only mode when execution freshness cannot be established.
+- Never add a provider from another chain or Stellar network as an emergency fallback.
+- Respect `Retry-After`; do not increase retry counts beyond the bounded policy.
+
+### Recovery and verification
+- Wait for the open interval and observe a single half-open probe.
+- A successful probe must transition the circuit to closed and preserve the request ID/freshness metadata.
+- Confirm no provider credentials or wallet identifiers appear in `/api/health`.
+- Remove recommendation-only mode only after at least one exact-network provider is healthy.
+
+See `docs/PROVIDER_RESILIENCE.md` for state-machine and scoring details.
+
+---
+
 ### Recommendation-Only Mode
 Set `RECOMMENDATION_ONLY_MODE=true` to disable ALL execution providers while
 preserving full agent analysis, risk scoring, portfolio review, token scanning,
