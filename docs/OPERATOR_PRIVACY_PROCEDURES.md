@@ -94,3 +94,15 @@ npm run test:privacy
 
 To roll back a deployment:
 - No database schema migrations destroy data. Unlinking sets `wallet_address = NULL` irreversibly for unlinked audit records as intended by policy.
+
+## Audit bundle export
+
+- The audit bundle export (`/api/wallet-privacy/audit-export`) is wallet-scoped
+  and requires an authenticated session. It never exports another wallet's data.
+- Generated bundles are redacted (no raw wallet, balance, strategy, payload,
+  secret, or signed XDR) and returned to the requester only — the server does
+  not retain bundle bytes.
+- Size and rate limits are controlled by `AUDIT_EXPORT_MAX_SELECTION`,
+  `AUDIT_EXPORT_MAX_RECORDS_PER_SECTION`, and `AUDIT_EXPORT_MAX_BYTES`.
+- Run `npm run test:audit-export` to re-verify redaction, hash stability, and
+  tamper/version failure behavior after any change to the privacy modules.

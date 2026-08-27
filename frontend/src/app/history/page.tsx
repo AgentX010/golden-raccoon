@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { AuditExportButton } from "@/components/AuditExportButton";
 import { listAgentRunRecords, listApprovalRecords, listRecommendationRecords, listTransactionRecords } from "@/server/storage";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,11 @@ export default async function HistoryPage() {
       <div className="space-y-5">
         <section className="flex flex-col gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <h1 className="text-3xl font-semibold tracking-tight">History</h1>
-          <div className="flex gap-4 text-sm text-white/46">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-white/46">
             <span>{recommendations.length} recommendations</span>
             <span>{approvals.length} approvals</span>
             <span>{transactions.length} transactions</span>
+            <AuditExportButton />
           </div>
         </section>
         <section className="glass-panel rounded-lg p-6">

@@ -41,3 +41,23 @@ export function getRetentionCutoffDate(days: number, now = new Date()): Date {
   cutoff.setDate(cutoff.getDate() - days);
   return cutoff;
 }
+
+/** Product version stamped into generated audit bundles. */
+export const AUDIT_EXPORT_PRODUCT_VERSION = "0.1.0";
+
+export interface AuditExportConfig {
+  /** Max explicit record ids a caller may select in one export. */
+  maxSelectionRecords: number;
+  /** Max records per bundle section (decisions/approvals/transactions). */
+  maxRecordsPerSection: number;
+  /** Max serialized bundle bytes before the export is refused. */
+  maxBundleBytes: number;
+}
+
+export function getAuditExportConfig(): AuditExportConfig {
+  return {
+    maxSelectionRecords: parseEnvInt("AUDIT_EXPORT_MAX_SELECTION", 1000),
+    maxRecordsPerSection: parseEnvInt("AUDIT_EXPORT_MAX_RECORDS_PER_SECTION", 500),
+    maxBundleBytes: parseEnvInt("AUDIT_EXPORT_MAX_BYTES", 1_048_576),
+  };
+}
