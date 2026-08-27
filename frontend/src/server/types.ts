@@ -1416,3 +1416,4 @@ export type PortfolioStressResult = {
   assumptions: string[];
   affectedHoldings: string[];
 };
+export const RECOVERY_RULES_VERSION = "v1";

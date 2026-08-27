@@ -2,7 +2,7 @@ import { AutoModeOnboarding } from "@/components/AutoModeOnboarding";
 import { RuleForm } from "@/components/RuleForm";
 import type { UserRule } from "@/server/types";
 
-export function StrategyClient({ initialRules }: { initialRules: UserRule }) {
+export function StrategyClient({ initialRules, presets, chains, categories }: any) {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <section className="flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
@@ -12,7 +12,7 @@ export function StrategyClient({ initialRules }: { initialRules: UserRule }) {
         </div>
         <span className="text-sm text-white/46">Wallet authorization required</span>
       </section>
-      <RuleForm initialRules={initialRules} />
+      <RuleForm initialRules={initialRules} presets={presets} chains={chains} categories={categories} />
       <AutoModeOnboarding />
     </div>
   );

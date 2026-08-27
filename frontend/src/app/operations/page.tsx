@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { knownLimitations, releaseReadinessChecks } from "@/server/operations/releaseReadiness";
 import { getFeatureFlagHealth } from "@/server/env/validation";
+import { OperationsSloPanel } from "@/components/OperationsSloPanel";
 
 export default function OperationsPage() {
   const featureFlags = getFeatureFlagHealth();
@@ -84,6 +85,7 @@ export default function OperationsPage() {
           ))}
         </div>
       </section>
+      <OperationsSloPanel />
     </AppShell>
   );
 }
