@@ -2,34 +2,68 @@
 set -euo pipefail
 
 # Reproducible EVM build
-# Pinned: Solidity 0.8.24, Hardhat, evm target paris
+# Pinned: Solidity 0.8.24, Hardhat, evmVersion paris, viaIR, optimizer runs=200
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CONTRACTS_DIR="${ROOT}/backend/contracts"
 
 echo "=== EVM Reproducible Build ==="
 echo "Compiler: Solidity 0.8.24 (Hardhat)"
 echo "EVM target: paris"
+echo "Settings: viaIR=true, optimizer runs=200"
 echo ""
 
-cd "$(dirname "$0")/../backend/contracts"
+cd "${CONTRACTS_DIR}"
+
+if [ ! -f package-lock.json ]; then
+  echo "ERROR: backend/contracts/package-lock.json missing; use a locked install" >&2
+  exit 1
+fi
 
 npx hardhat clean
 npx hardhat compile
 
-ARTIFACT="artifacts/contracts/GoldRaccoonPolicy.sol/GoldRaccoonPolicy.json"
-if [ -f "$ARTIFACT" ]; then
+hash_file() {
+  local file="$1"
   if command -v sha256sum &> /dev/null; then
-    HASH=$(sha256sum "$ARTIFACT" | cut -d' ' -f1)
+    sha256sum "$file" | cut -d' ' -f1
   else
-    HASH=$(python3 -c "import hashlib; print(hashlib.sha256(open('$ARTIFACT','rb').read()).hexdigest())")
+    shasum -a 256 "$file" | cut -d' ' -f1
   fi
-  echo "=== Build Verification ==="
-  echo "GoldRaccoonPolicy artifact hash: $HASH"
-  echo ""
-  echo "To verify reproducibility:"
-  echo "  1. git checkout <commit>"
-  echo "  2. ./scripts/build-evm.sh"
-  echo "  3. Compare artifact hash with CI/reference build"
-  echo ""
-  echo "Contracts: GoldRaccoonPolicy, GoldRaccoonPolicyV2, GoldRaccoonVault"
-fi
+}
 
+hash_creation_bytecode() {
+  local artifact="$1"
+  node -e '
+    const fs = require("fs");
+    const crypto = require("crypto");
+    const art = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const hex = String(art.bytecode || "").replace(/^0x/, "");
+    const meta = typeof art.metadata === "string" ? art.metadata : JSON.stringify(art.metadata || {});
+    const creation = crypto.createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex");
+    const metadata = crypto.createHash("sha256").update(meta).digest("hex");
+    process.stdout.write(`${creation} ${metadata}`);
+  ' "$artifact"
+}
+
+echo "=== Build Verification (creation bytecode + metadata) ==="
+for ARTIFACT in \
+  "artifacts/contracts/GoldRaccoonPolicy.sol/GoldRaccoonPolicy.json" \
+  "artifacts/contracts/GoldRaccoonVault.sol/GoldRaccoonVault.json" \
+  "artifacts/contracts/GoldenRaccoonAudit.sol/GoldenRaccoonAudit.json"
+do
+  if [ -f "$ARTIFACT" ]; then
+    read -r CREATION_HASH METADATA_HASH < <(hash_creation_bytecode "$ARTIFACT")
+    FILE_HASH="$(hash_file "$ARTIFACT")"
+    echo "$(basename "$(dirname "$ARTIFACT")"): creation=${CREATION_HASH} metadata=${METADATA_HASH} json=${FILE_HASH}"
+  fi
+done
+
+echo ""
+echo "To verify reproducibility:"
+echo "  1. git checkout <commit>"
+echo "  2. ./scripts/build-evm.sh"
+echo "  3. Compare creation bytecode hashes with CI/reference build"
+echo "  4. npm run provenance:freeze -- --release && npm run provenance:verify -- --strict"
+echo ""
 echo "Build complete."

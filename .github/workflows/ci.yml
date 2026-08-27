@@ -164,3 +164,99 @@ jobs:
 
           echo "Server did not become healthy in time" >&2
           exit 1
+
+  artifact-provenance:
+    name: Contract artifact provenance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/contracts/package-lock.json
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@1.85.0
+        with:
+          targets: wasm32v1-none
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: soroban -> target
+          cache-targets: false
+          cache-on-failure: true
+
+      - name: Cache Stellar CLI
+        id: cache-stellar-cli-provenance
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/stellar
+          key: stellar-cli-${{ runner.os }}-${{ env.STELLAR_CLI_VERSION }}
+
+      - name: Install Stellar CLI
+        if: steps.cache-stellar-cli-provenance.outputs.cache-hit != 'true'
+        run: cargo install --locked stellar-cli --version ${{ env.STELLAR_CLI_VERSION }}
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install EVM contract dependencies
+        run: npm ci
+        working-directory: backend/contracts
+
+      - name: Verifier self-test
+        run: node scripts/verify-artifact-provenance.mjs --self-test
+
+      - name: Dual clean EVM builds
+        working-directory: backend/contracts
+        run: |
+          set -euo pipefail
+          hash_creation() {
+            node -e '
+              const fs = require("fs");
+              const crypto = require("crypto");
+              const art = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              const hex = String(art.bytecode || "").replace(/^0x/, "");
+              process.stdout.write(crypto.createHash("sha256").update(Buffer.from(hex, "hex")).digest("hex"));
+            ' "$1"
+          }
+          npx hardhat clean && npx hardhat compile
+          H1="$(hash_creation artifacts/contracts/GoldRaccoonPolicy.sol/GoldRaccoonPolicy.json)"
+          npx hardhat clean && npx hardhat compile
+          H2="$(hash_creation artifacts/contracts/GoldRaccoonPolicy.sol/GoldRaccoonPolicy.json)"
+          echo "EVM creation bytecode pass1=${H1}"
+          echo "EVM creation bytecode pass2=${H2}"
+          test "$H1" = "$H2"
+
+      - name: Dual clean Soroban builds
+        run: |
+          set -euo pipefail
+          WASM=soroban/target/wasm32v1-none/release/golden_raccoon_policy.wasm
+          stellar contract build --manifest-path soroban/Cargo.toml
+          H1="$(sha256sum "$WASM" | awk '{print $1}')"
+          rm -rf soroban/target/wasm32v1-none/release
+          stellar contract build --manifest-path soroban/Cargo.toml
+          H2="$(sha256sum "$WASM" | awk '{print $1}')"
+          echo "Soroban WASM pass1=${H1}"
+          echo "Soroban WASM pass2=${H2}"
+          test "$H1" = "$H2"
+
+      - name: Freeze release provenance manifest
+        run: node scripts/hash-freeze-build.mjs --write --release
+
+      - name: Verify provenance manifest
+        run: node scripts/verify-artifact-provenance.mjs --strict release-manifests/latest.json
+
+      - name: Upload provenance manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-artifact-provenance
+          path: release-manifests/
+          if-no-files-found: error
