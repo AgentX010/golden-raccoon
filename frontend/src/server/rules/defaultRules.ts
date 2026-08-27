@@ -21,7 +21,7 @@ export function getDefaultRules(
     maxSlippageBps: 100,
     minStableReservePercent: 15,
     allowedChains: ["GOAT Network", "Base", "Ethereum", "Arbitrum", "Optimism", "Polygon", "BSC", "Stellar Testnet", "Stellar Pubnet"],
-    blockedTokens: [],
+    blockedAssets: [],
     blockedIssuers: [],
     blockedCategories: [],
     allowedActions: ["hold", "watch", "reduce_exposure", "swap_to_stable", "prepare_transaction", "no_action"],
