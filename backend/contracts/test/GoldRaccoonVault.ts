@@ -1,61 +1,43 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("GoldRaccoonVault", function () {
+describe("GoldRaccoonVault constructor smoke checks", function () {
   async function deployVault() {
-    const [owner, agent, other] = await ethers.getSigners();
+    const [, agent, user] = await ethers.getSigners();
+    const Policy = await ethers.getContractFactory("GoldRaccoonPolicy");
+    const policy = await Policy.deploy();
+    await policy.waitForDeployment();
     const Vault = await ethers.getContractFactory("GoldRaccoonVault");
-    const vault = await Vault.deploy();
+    const vault = await Vault.deploy(policy.target, agent.address);
     await vault.waitForDeployment();
-    return { vault, owner, agent, other };
+    return { Vault, vault, policy, agent, user };
   }
 
-  it("sets the deployer as owner", async function () {
-    const { vault, owner } = await deployVault();
-    expect(await vault.owner()).to.equal(owner.address);
-  });
-
-  it("allows the owner to set an agent and rules", async function () {
-    const { vault, owner, agent } = await deployVault();
-
-    await expect(vault.connect(owner).setAgent(agent.address))
-      .to.emit(vault, "AgentApproved")
-      .withArgs(owner.address, agent.address);
-
-    await expect(vault.connect(owner).setRules(70, 25))
-      .to.emit(vault, "RulesUpdated")
-      .withArgs(owner.address, 70, 25);
-
+  it("records the reviewed policy and agent identities", async function () {
+    const { vault, policy, agent } = await deployVault();
+    expect(await vault.policy()).to.equal(policy.target);
     expect(await vault.agent()).to.equal(agent.address);
-    expect(await vault.maxRiskScore()).to.equal(70n);
-    expect(await vault.maxTradePercent()).to.equal(25n);
   });
 
-  it("lets the approved agent log a decision", async function () {
-    const { vault, owner, agent } = await deployVault();
-    await vault.connect(owner).setAgent(agent.address);
-
-    await expect(vault.connect(agent).logDecision("decision-hash", 42))
-      .to.emit(vault, "DecisionLogged")
-      .withArgs(owner.address, agent.address, "decision-hash", 42);
+  it("rejects a zero policy address", async function () {
+    const { Vault, agent } = await deployVault();
+    await expect(Vault.deploy(ethers.ZeroAddress, agent.address)).to.be.revertedWith("Vault: zero policy");
   });
 
-  it("rejects unauthorized agent and rule updates", async function () {
-    const { vault, agent, other } = await deployVault();
-
-    await expect(vault.connect(other).setAgent(agent.address)).to.be.revertedWith("GoldRaccoon: not owner");
-    await expect(vault.connect(other).setRules(50, 10)).to.be.revertedWith("GoldRaccoon: not owner");
-    await expect(vault.connect(other).logDecision("decision-hash", 10)).to.be.revertedWith("GoldRaccoon: not agent");
+  it("rejects a zero agent address", async function () {
+    const { Vault, policy } = await deployVault();
+    await expect(Vault.deploy(policy.target, ethers.ZeroAddress)).to.be.revertedWith("Vault: zero agent");
   });
 
-  it("revokes the approved agent", async function () {
-    const { vault, owner, agent } = await deployVault();
-    await vault.connect(owner).setAgent(agent.address);
+  it("keeps withdrawal authority immutable", async function () {
+    const { vault, user } = await deployVault();
+    await expect(
+      vault.connect(user).withdraw(ethers.ZeroAddress, 1, user.address, ethers.ZeroHash),
+    ).to.be.revertedWith("Vault: not agent");
+  });
 
-    await expect(vault.connect(owner).revokeAgent())
-      .to.emit(vault, "AgentRevoked")
-      .withArgs(owner.address, agent.address);
-
-    expect(await vault.agent()).to.equal(ethers.ZeroAddress);
+  it("starts every user and token balance at zero", async function () {
+    const { vault, user } = await deployVault();
+    expect(await vault.userBalance(user.address, user.address)).to.equal(0n);
   });
 });

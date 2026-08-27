@@ -1,0 +1,75 @@
+name: Supply chain
+
+on:
+  pull_request:
+    paths:
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "soroban/Cargo.toml"
+      - "soroban/Cargo.lock"
+      - "scripts/build-*.sh"
+      - "scripts/*sbom*"
+      - "scripts/*provenance*"
+      - "scripts/*dependency-policy*"
+      - ".github/workflows/supply-chain.yml"
+      - ".github/dependabot.yml"
+      - "docs/SUPPLY_CHAIN.md"
+      - "docs/security/**"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  inventory-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            backend/contracts/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.91.0
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix frontend
+      - run: npm ci --ignore-scripts --prefix backend/contracts
+      - run: npm run supply-chain:policy:audit
+      - run: npm run sbom:generate
+      - name: Prove lockfiles were not rewritten
+        run: git diff --exit-code -- package-lock.json frontend/package-lock.json backend/contracts/package-lock.json soroban/Cargo.lock
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sboms
+          path: artifacts/sbom/*.json
+          if-no-files-found: error
+
+  build-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/contracts/package-lock.json
+      - uses: dtolnay/rust-toolchain@1.91.0
+        with:
+          targets: wasm32v1-none
+      - run: npm ci --ignore-scripts --prefix backend/contracts
+      - run: ./scripts/build-evm.sh
+      - run: ./scripts/build-soroban.sh
+      - run: npm run provenance:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contract-build-provenance
+          path: artifacts/provenance/*.json
+          if-no-files-found: error

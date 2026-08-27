@@ -1,22 +1,25 @@
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractevent, contractimpl, contracttype, Address, BytesN, Env, String, Symbol, Vec};
+use soroban_sdk::{
+    contract, contracterror, contractevent, contractimpl, contracttype, Address, BytesN, Env,
+    String, Symbol, Vec,
+};
 
 // ─── TTL Configuration ──────────────────────────────────────────────
-const INSTANCE_TTL_THRESHOLD: u32 = 30 * 24 * 60 * 60 / 5;    // 30d
-const INSTANCE_TTL_EXTEND_TO: u32 = 120 * 24 * 60 * 60 / 5;   // 120d
-const RECORD_TTL_THRESHOLD: u32 = 60 * 24 * 60 * 60 / 5;      // 60d
-const RECORD_TTL_EXTEND_TO: u32 = 365 * 24 * 60 * 60 / 5;     // 365d
-const PUBLISHER_TTL_THRESHOLD: u32 = 60 * 24 * 60 * 60 / 5;   // 60d
-const PUBLISHER_TTL_EXTEND_TO: u32 = 365 * 24 * 60 * 60 / 5;  // 365d
+const INSTANCE_TTL_THRESHOLD: u32 = 30 * 24 * 60 * 60 / 5; // 30d
+const INSTANCE_TTL_EXTEND_TO: u32 = 120 * 24 * 60 * 60 / 5; // 120d
+const RECORD_TTL_THRESHOLD: u32 = 60 * 24 * 60 * 60 / 5; // 60d
+const RECORD_TTL_EXTEND_TO: u32 = 365 * 24 * 60 * 60 / 5; // 365d
+const PUBLISHER_TTL_THRESHOLD: u32 = 60 * 24 * 60 * 60 / 5; // 60d
+const PUBLISHER_TTL_EXTEND_TO: u32 = 365 * 24 * 60 * 60 / 5; // 365d
 
 // ─── Bounds ────────────────────────────────────────────────────────
-const MAX_FUTURE_SECONDS: u64 = 300;           // 5 min into future
+const MAX_FUTURE_SECONDS: u64 = 300; // 5 min into future
 const MAX_STALE_SECONDS: u64 = 30 * 24 * 60 * 60; // 30 days max age
 const MAX_ASSET_LABEL_BYTES: u32 = 64;
 const MAX_EVIDENCE_URI_BYTES: u32 = 512;
 const MAX_SCORE: u32 = 100;
-const MAX_CONFIDENCE_BPS: u32 = 10_000;        // 100.00%
+const MAX_CONFIDENCE_BPS: u32 = 10_000; // 100.00%
 const CONTRACT_VERSION: u32 = 1;
 
 // ─── Data Keys ─────────────────────────────────────────────────────
@@ -111,15 +114,21 @@ pub struct RiskRegistry;
 
 // ─── TTL Helpers ────────────────────────────────────────────────────
 fn bump_instance_ttl(env: &Env) {
-    env.storage().instance().extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+    env.storage()
+        .instance()
+        .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
 }
 
 fn bump_publisher_ttl(env: &Env, key: &DataKey) {
-    env.storage().persistent().extend_ttl(key, PUBLISHER_TTL_THRESHOLD, PUBLISHER_TTL_EXTEND_TO);
+    env.storage()
+        .persistent()
+        .extend_ttl(key, PUBLISHER_TTL_THRESHOLD, PUBLISHER_TTL_EXTEND_TO);
 }
 
 fn bump_record_ttl(env: &Env, key: &DataKey) {
-    env.storage().persistent().extend_ttl(key, RECORD_TTL_THRESHOLD, RECORD_TTL_EXTEND_TO);
+    env.storage()
+        .persistent()
+        .extend_ttl(key, RECORD_TTL_THRESHOLD, RECORD_TTL_EXTEND_TO);
 }
 
 fn require_initialized(env: &Env) -> Result<(), RegistryError> {
@@ -166,7 +175,11 @@ fn validate_bounds(
 impl RiskRegistry {
     /// Initialize the contract with an admin and initial set of publishers.
     /// Publish RegistryInitialized event with contract version.
-    pub fn initialize(env: Env, admin: Address, publishers: Vec<Address>) -> Result<(), RegistryError> {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        publishers: Vec<Address>,
+    ) -> Result<(), RegistryError> {
         if env.storage().instance().has(&DataKey::Initialized) {
             return Err(RegistryError::AlreadyInitialized);
         }
@@ -174,7 +187,9 @@ impl RiskRegistry {
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Initialized, &true);
-        env.storage().instance().set(&DataKey::Version, &CONTRACT_VERSION);
+        env.storage()
+            .instance()
+            .set(&DataKey::Version, &CONTRACT_VERSION);
 
         for publisher in publishers.iter() {
             let key = DataKey::Publisher(publisher.clone());
@@ -183,12 +198,20 @@ impl RiskRegistry {
         }
 
         bump_instance_ttl(&env);
-        RegistryInitialized { admin, version: CONTRACT_VERSION }.publish(&env);
+        RegistryInitialized {
+            admin,
+            version: CONTRACT_VERSION,
+        }
+        .publish(&env);
         Ok(())
     }
 
     /// Authorize or revoke a publisher. Only callable by admin.
-    pub fn set_publisher(env: Env, publisher: Address, authorized: bool) -> Result<(), RegistryError> {
+    pub fn set_publisher(
+        env: Env,
+        publisher: Address,
+        authorized: bool,
+    ) -> Result<(), RegistryError> {
         require_initialized(&env)?;
         let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
@@ -201,7 +224,11 @@ impl RiskRegistry {
             env.storage().persistent().remove(&key);
         }
 
-        PublisherAuthorizationChanged { publisher, authorized }.publish(&env);
+        PublisherAuthorizationChanged {
+            publisher,
+            authorized,
+        }
+        .publish(&env);
         Ok(())
     }
 
@@ -242,17 +269,15 @@ impl RiskRegistry {
 
         // Compute version and check staleness
         let key = DataKey::Record(asset_id.clone(), network.clone());
-        let (version, ledger) = if let Some(existing) = env.storage().persistent().get::<DataKey, RiskRecord>(&key) {
-            if updated_at <= existing.updated_at {
-                return Err(RegistryError::StaleReport);
-            }
-            (existing.version.saturating_add(1), existing.ledger)
-        } else {
-            (1, env.ledger().sequence())
-        };
-
-        // Version increments monotonically. Saturating prevents overflow.
-        let next_version = version.saturating_add(1);
+        let version =
+            if let Some(existing) = env.storage().persistent().get::<DataKey, RiskRecord>(&key) {
+                if updated_at <= existing.updated_at {
+                    return Err(RegistryError::StaleReport);
+                }
+                existing.version.saturating_add(1)
+            } else {
+                1
+            };
 
         let record = RiskRecord {
             asset_id: asset_id.clone(),
@@ -264,7 +289,7 @@ impl RiskRegistry {
             report_hash: report_hash.clone(),
             evidence_uri,
             publisher: publisher.clone(),
-            version: next_version,
+            version,
             updated_at,
             ledger: env.ledger().sequence(),
         };
@@ -280,7 +305,7 @@ impl RiskRegistry {
             confidence_bps,
             verdict,
             report_hash,
-            version: next_version,
+            version,
             updated_at,
         }
         .publish(&env);
@@ -334,14 +359,24 @@ impl RiskRegistry {
         if new_version <= old_version {
             return Err(RegistryError::InvalidVersion);
         }
-        env.storage().instance().set(&DataKey::Version, &new_version);
-        ContractVersionChanged { old_version, new_version }.publish(&env);
+        env.storage()
+            .instance()
+            .set(&DataKey::Version, &new_version);
+        ContractVersionChanged {
+            old_version,
+            new_version,
+        }
+        .publish(&env);
         Ok(())
     }
 
     /// Extend TTL for a specific risk record. Useful for off-chain keepers
     /// to maintain active records.
-    pub fn extend_record_ttl(env: Env, asset_id: BytesN<32>, network: Symbol) -> Result<(), RegistryError> {
+    pub fn extend_record_ttl(
+        env: Env,
+        asset_id: BytesN<32>,
+        network: Symbol,
+    ) -> Result<(), RegistryError> {
         require_initialized(&env)?;
         let key = DataKey::Record(asset_id, network);
         if env.storage().persistent().has(&key) {
