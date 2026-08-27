@@ -6,6 +6,7 @@ import type {
   StorageHealth,
   StorageProvider,
   TransactionRecord,
+  TransactionObservation,
   UserApprovalRecord,
   UserRule,
   X402PaymentReceipt,
@@ -72,6 +73,8 @@ export interface IStorageAdapter {
   listTransactionRecords(walletAddress?: string): Promise<TransactionRecord[]>;
   getTransactionRecord(hash: string): Promise<TransactionRecord | null>;
   createTransactionRecord(record: TransactionRecord): Promise<TransactionRecord>;
+  listTransactionObservations(hash: string): Promise<TransactionObservation[]>;
+  createTransactionObservation(observation: TransactionObservation): Promise<TransactionObservation>;
 
   // ─── Approvals ───────────────────────────────────────────────────
   listApprovalRecords(walletAddress?: string): Promise<UserApprovalRecord[]>;

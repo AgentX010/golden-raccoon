@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { withCacheHeaders } from "@/server/cache/strategy";
-import { listTransactionLifecycleEvents, listTransactionRecordsPaginated } from "@/server/storage";
+import { listTransactionLifecycleEvents, listTransactionObservations, listTransactionRecordsPaginated } from "@/server/storage";
 import { attachExplorerUrl } from "@/server/transactions/explorer";
 import { getChainFamily } from "@/lib/chainIdentity";
 
@@ -18,6 +18,12 @@ export async function GET(request: NextRequest) {
   const items = result.items.map((record) => ({
     ...record,
     events: listTransactionLifecycleEvents(record.hash),
+    observations: listTransactionObservations(record.hash),
+    finality: {
+      confirmations: record.confirmationCount ?? 0,
+      required: record.requiredConfirmations ?? 1,
+      reached: record.finalityReached ?? false,
+    },
     explorerUrl: record.explorerUrl ?? attachExplorerUrl({ hash: record.hash, network: record.network, chainFamily: getChainFamily(record.network) }),
   }));
 

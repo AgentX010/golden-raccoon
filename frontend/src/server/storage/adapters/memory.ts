@@ -2,6 +2,7 @@ import type {
   AgentRunRecord,
   RecommendationRecord,
   TransactionRecord,
+  TransactionObservation,
   UserApprovalRecord,
   UserRule,
   X402PaymentReceipt,
@@ -15,6 +16,7 @@ const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonAgentRuns?: AgentRunRecord[];
   __goldenRaccoonRecommendations?: RecommendationRecord[];
   __goldenRaccoonTransactions?: TransactionRecord[];
+  __goldenRaccoonTransactionObservations?: TransactionObservation[];
   __goldenRaccoonApprovals?: UserApprovalRecord[];
   __goldenRaccoonUserRules?: UserRule[];
   __goldenRaccoonX402PaymentReceipts?: X402PaymentReceipt[];
@@ -31,6 +33,10 @@ function getRecommendations(): RecommendationRecord[] {
 function getTransactions(): TransactionRecord[] {
   memoryStore.__goldenRaccoonTransactions ??= [];
   return memoryStore.__goldenRaccoonTransactions;
+}
+function getTransactionObservations(): TransactionObservation[] {
+  memoryStore.__goldenRaccoonTransactionObservations ??= [];
+  return memoryStore.__goldenRaccoonTransactionObservations;
 }
 function getApprovals(): UserApprovalRecord[] {
   memoryStore.__goldenRaccoonApprovals ??= [];
@@ -121,6 +127,19 @@ export class MemoryStorageAdapter implements IStorageAdapter {
     return record;
   }
 
+  async listTransactionObservations(hash: string): Promise<TransactionObservation[]> {
+    return getTransactionObservations()
+      .filter((item) => item.hash.toLowerCase() === hash.toLowerCase())
+      .sort((a, b) => new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime());
+  }
+
+  async createTransactionObservation(observation: TransactionObservation): Promise<TransactionObservation> {
+    const existing = getTransactionObservations().find((item) => item.evidenceKey === observation.evidenceKey);
+    if (existing) return existing;
+    getTransactionObservations().unshift(observation);
+    return observation;
+  }
+
   // ─── Approvals ───────────────────────────────────────────────────
 
   async listApprovalRecords(walletAddress?: string): Promise<UserApprovalRecord[]> {
@@ -190,6 +209,10 @@ export class MemoryStorageAdapter implements IStorageAdapter {
       approvals: getApprovals().length,
       userRules: getUserRules().length,
       x402PaymentReceipts: getX402PaymentReceipts().length,
+      alertRules: 0,
+      alertObservations: 0,
+      alerts: 0,
+      alertDeliveries: 0,
     };
   }
 

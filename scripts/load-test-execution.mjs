@@ -46,7 +46,7 @@ function fetchWithTimeout(url, options = {}) {
 
 async function executeFlow() {
   const walletAddress = randomWallet();
-  const results = { prepare: null, confirm: null };
+  const results = { prepare: null, confirm: null, reconcile: null };
 
   try {
     // Step 1: Prepare execution preview
@@ -96,6 +96,17 @@ async function executeFlow() {
     });
     results.confirm = { status: confirmRes.status, ok: confirmRes.ok };
 
+    // Bounded reconciliation sampling. A broadcast alone is never counted as
+    // final; the status endpoint must expose confirmation evidence.
+    let reconciliation;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const statusRes = await fetchWithTimeout(`${BASE_URL}/api/execute/transactions/0x0000000000000000000000000000000000000000000000000000000000000001?network=ethereum`);
+      const body = await statusRes.json().catch(() => ({}));
+      reconciliation = { status: statusRes.status, lifecycle: body.transaction?.lifecycleStatus, finality: body.finality };
+      if (["confirmed", "failed", "replaced", "dropped", "manual_review"].includes(reconciliation.lifecycle)) break;
+    }
+    results.reconcile = reconciliation;
+
     return { walletAddress, results, error: null };
   } catch (err) {
     return { walletAddress, results, error: err.message };
@@ -131,7 +142,7 @@ async function main() {
   // Aggregate
   let totalOk = 0;
   let totalErr = 0;
-  let stepCounts = { prepare: { ok: 0, fail: 0 }, confirm: { ok: 0, fail: 0 } };
+  let stepCounts = { prepare: { ok: 0, fail: 0 }, confirm: { ok: 0, fail: 0 }, reconcile: { ok: 0, fail: 0 } };
   const errors = [];
 
   for (const wr of allWorkerResults) {
@@ -146,6 +157,8 @@ async function main() {
       else stepCounts.prepare.fail++;
       if (r.results.confirm?.ok) stepCounts.confirm.ok++;
       else stepCounts.confirm.fail++;
+      if (r.results.reconcile?.status === 200) stepCounts.reconcile.ok++;
+      else stepCounts.reconcile.fail++;
     }
   }
 
@@ -160,6 +173,7 @@ async function main() {
   console.log('Step-level status:');
   console.log(`  /api/execute/prepare  — OK: ${stepCounts.prepare.ok}, FAIL: ${stepCounts.prepare.fail}`);
   console.log(`  /api/execute/confirm  — OK: ${stepCounts.confirm.ok}, FAIL: ${stepCounts.confirm.fail}`);
+  console.log(`  lifecycle reconcile   — OK: ${stepCounts.reconcile.ok}, FAIL: ${stepCounts.reconcile.fail}`);
   console.log('');
 
   if (errors.length > 0) {

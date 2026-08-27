@@ -124,7 +124,7 @@ create table if not exists transactions (
   asset text not null,
   value_usd numeric not null default 0,
   status text not null,
-  lifecycle_status text not null check (lifecycle_status in ('prepared', 'user_rejected', 'submitted', 'confirmed', 'failed', 'replaced', 'expired', 'pending')),
+  lifecycle_status text not null check (lifecycle_status in ('prepared', 'user_rejected', 'submitted', 'confirming', 'confirmed', 'failed', 'replaced', 'reorged', 'dropped', 'manual_review', 'expired', 'pending')),
   chain_family text not null default 'evm' check (chain_family in ('evm', 'stellar')),
   source_account text,
   expected_effects jsonb not null default '[]'::jsonb,
@@ -134,6 +134,15 @@ create table if not exists transactions (
   submitted_at timestamptz,
   terminal_at timestamptz,
   last_polled_at timestamptz,
+  poll_attempts integer not null default 0,
+  confirmation_count integer not null default 0,
+  required_confirmations integer not null default 1,
+  finality_reached boolean not null default false,
+  replacement_hash text,
+  last_observed_block_hash text,
+  missing_observation_count integer not null default 0,
+  manual_review_reason text,
+  observation_count integer not null default 0,
   network text not null,
   user_approved boolean not null default false,
   simulation_status text,
@@ -152,6 +161,15 @@ alter table transactions add column if not exists failure_reason text;
 alter table transactions add column if not exists submitted_at timestamptz;
 alter table transactions add column if not exists terminal_at timestamptz;
 alter table transactions add column if not exists last_polled_at timestamptz;
+alter table transactions add column if not exists poll_attempts integer not null default 0;
+alter table transactions add column if not exists confirmation_count integer not null default 0;
+alter table transactions add column if not exists required_confirmations integer not null default 1;
+alter table transactions add column if not exists finality_reached boolean not null default false;
+alter table transactions add column if not exists replacement_hash text;
+alter table transactions add column if not exists last_observed_block_hash text;
+alter table transactions add column if not exists missing_observation_count integer not null default 0;
+alter table transactions add column if not exists manual_review_reason text;
+alter table transactions add column if not exists observation_count integer not null default 0;
 alter table transactions add column if not exists user_approved boolean not null default false;
 alter table transactions add column if not exists simulation_status text;
 alter table transactions add column if not exists policy_status jsonb not null default '{}'::jsonb;
@@ -161,14 +179,14 @@ alter table transactions add column if not exists decision_id text;
 -- Add check constraint for lifecycle_status if the table already existed
 alter table transactions drop constraint if exists transactions_lifecycle_status_check;
 alter table transactions add constraint transactions_lifecycle_status_check
-  check (lifecycle_status in ('prepared', 'user_rejected', 'submitted', 'confirmed', 'failed', 'replaced', 'expired', 'pending'));
+  check (lifecycle_status in ('prepared', 'user_rejected', 'submitted', 'confirming', 'confirmed', 'failed', 'replaced', 'reorged', 'dropped', 'manual_review', 'expired', 'pending'));
 
 -- Backfill (idempotent): for rows that pre-date the V2 columns, lift the legacy status into
 -- the lifecycle_status column. Existing rows that already carry a curated lifecycle_status
 -- value are left untouched.
 update transactions
    set lifecycle_status = status
- where lifecycle_status not in ('prepared', 'user_rejected', 'submitted', 'confirmed', 'failed', 'replaced', 'expired', 'pending');
+ where lifecycle_status not in ('prepared', 'user_rejected', 'submitted', 'confirming', 'confirmed', 'failed', 'replaced', 'reorged', 'dropped', 'manual_review', 'expired', 'pending');
 
 create unique index if not exists transactions_idempotency_wallet_idx
   on transactions(wallet_address, idempotency_key)
@@ -176,7 +194,7 @@ create unique index if not exists transactions_idempotency_wallet_idx
 create table if not exists transaction_lifecycle_events (
   id uuid primary key default gen_random_uuid(),
   transaction_hash text not null references transactions(tx_hash) on delete cascade,
-  event text not null check (event in ('prepared', 'submitted', 'submission_failed', 'user_rejected', 'polled', 'confirmed', 'failed', 'replaced', 'expired', 'duplicate_rejected')),
+  event text not null check (event in ('prepared', 'submitted', 'submission_failed', 'user_rejected', 'polled', 'observation_recorded', 'confirmation_progress', 'provider_disagreement', 'reorg_detected', 'replacement_detected', 'dropped_detected', 'manual_review_required', 'confirmed', 'failed', 'replaced', 'expired', 'duplicate_rejected')),
   detail jsonb not null default '{}'::jsonb,
   provider text,
   provider_url text,
@@ -185,6 +203,28 @@ create table if not exists transaction_lifecycle_events (
 
 create index if not exists transaction_lifecycle_events_hash_occurred_idx
   on transaction_lifecycle_events(transaction_hash, occurred_at desc);
+
+create table if not exists transaction_observations (
+  id text primary key,
+  transaction_hash text not null references transactions(tx_hash) on delete cascade,
+  evidence_key text not null,
+  chain_family text not null check (chain_family in ('evm', 'stellar')),
+  network text not null,
+  provider text not null,
+  provider_url text,
+  status text not null check (status in ('not_found', 'pending', 'included', 'confirmed', 'failed', 'replaced', 'expired', 'duplicate', 'provider_disagreement')),
+  block_number bigint,
+  block_hash text,
+  ledger_sequence bigint,
+  confirmations integer not null default 0,
+  required_confirmations integer not null default 1,
+  replacement_hash text,
+  nonce bigint,
+  detail text,
+  observed_at timestamptz not null default now(),
+  unique(transaction_hash, evidence_key)
+);
+create index if not exists transaction_observations_hash_observed_idx on transaction_observations(transaction_hash, observed_at desc);
 
 create table if not exists x402_payment_receipts (
   id uuid primary key default gen_random_uuid(),

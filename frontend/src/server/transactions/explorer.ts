@@ -10,6 +10,7 @@ export type ExplorerLink = {
   network: string;
   hash: string;
   source: string;
+  confirmationEvidence: false;
 };
 
 const EVM_EXPLORER_BASE_URLS: Record<string, string> = {
@@ -65,7 +66,8 @@ export function buildExplorerLink(hash: string, network: string, family: ChainFa
     family,
     network,
     hash,
-    source: sourceHint ?? family === "stellar" ? "stellar_expert" : "chain_explorer",
+    source: sourceHint ?? (family === "stellar" ? "stellar_expert" : "chain_explorer"),
+    confirmationEvidence: false,
   };
 }
 

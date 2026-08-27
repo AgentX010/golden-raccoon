@@ -35,5 +35,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     polled: poll.polled,
     terminalReached: poll.terminalReached,
     events: poll.events,
+    observations: poll.observations,
+    finality: {
+      confirmations: poll.transaction.confirmationCount ?? 0,
+      required: poll.transaction.requiredConfirmations ?? 1,
+      reached: poll.transaction.finalityReached ?? false,
+      manualReviewReason: poll.transaction.manualReviewReason,
+    },
   }), "transactions");
 }

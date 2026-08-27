@@ -5,7 +5,7 @@ import { isTransactionHashForChain } from "@/lib/chainIdentity";
 import { getStellarNetwork, type StellarNetworkConfig, type StellarNetworkId } from "@/lib/stellar/config";
 import type { TransactionExpectedEffect } from "@/server/types";
 
-export type StellarTerminalStatus = "confirmed" | "failed" | "replaced" | "expired" | "pending" | "submitted";
+export type StellarTerminalStatus = "confirming" | "confirmed" | "failed" | "replaced" | "reorged" | "dropped" | "manual_review" | "expired" | "pending" | "submitted";
 
 export type StellarVerificationExpectation = {
   walletAddress?: string;
@@ -40,16 +40,26 @@ export type StellarPollResult = {
   sourceAccount?: string;
   matchedEffects?: boolean;
   verificationDetail?: string;
+  observationStatus?: "not_found" | "pending" | "included" | "confirmed" | "failed" | "replaced" | "expired" | "duplicate" | "provider_disagreement";
+  confirmations?: number;
+  requiredConfirmations?: number;
+  replacementHash?: string;
+  providerAgreement?: boolean;
 };
 
 export type StellarAdapterOptions = {
   network: string;
   rpcUrl?: string;
+  confirmationDepth?: number;
 };
+
+type StellarPollFixtureStatus = "confirmed" | "failed" | "replaced" | "duplicate" | "provider_disagreement" | "expired" | "pending";
 
 type StellarSimulatorConfig = {
   submitOutcome?: "submitted" | "rejected" | "expired" | "failed";
-  pollOutcome?: "confirmed" | "failed" | "replaced" | "expired" | "pending";
+  pollOutcome?: StellarPollFixtureStatus;
+  pollSequence?: Array<{ status: StellarPollFixtureStatus; ledger?: number; latestLedger?: number; confirmations?: number }>;
+  pollCursor?: number;
   expectedEffects?: TransactionExpectedEffect[];
 };
 
@@ -206,23 +216,31 @@ export function getStellarChainAdapter(options: StellarAdapterOptions): {
     },
     async poll(hash, overrides) {
       const simulator = getStellarSimulator(family, options.network);
-      const outcome = overrides?.simulate ?? simulator?.pollOutcome;
+      const sequenceItem = simulator?.pollSequence?.[simulator.pollCursor ?? 0];
+      if (sequenceItem && simulator) simulator.pollCursor = (simulator.pollCursor ?? 0) + 1;
+      const outcome = overrides?.simulate ?? sequenceItem?.status ?? simulator?.pollOutcome;
       const polledAt = new Date().toISOString();
+      const requiredConfirmations = Math.max(1, options.confirmationDepth ?? Number(process.env.STELLAR_FINALITY_LEDGERS ?? 2));
 
-      if (outcome === "expired") return { hash, family, network, status: "expired", providerUrl, polledAt };
-      if (outcome === "replaced") return { hash, family, network, status: "replaced", providerUrl, polledAt };
-      if (outcome === "failed") return { hash, family, network, status: "failed", providerUrl, polledAt, revertReason: "Simulated revert reason (fixture coverage)." };
-      if (outcome === "pending") return { hash, family, network, status: "pending", providerUrl, polledAt };
+      if (outcome === "expired") return { hash, family, network, status: "expired", observationStatus: "expired", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "replaced") return { hash, family, network, status: "replaced", observationStatus: "replaced", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "failed") return { hash, family, network, status: "failed", observationStatus: "failed", providerUrl, polledAt, revertReason: "Simulated revert reason (fixture coverage).", confirmations: 0, requiredConfirmations };
+      if (outcome === "pending") return { hash, family, network, status: "pending", observationStatus: "pending", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "duplicate") return { hash, family, network, status: "pending", observationStatus: "duplicate", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
+      if (outcome === "provider_disagreement") return { hash, family, network, status: "manual_review", observationStatus: "provider_disagreement", providerAgreement: false, providerUrl, polledAt, confirmations: 0, requiredConfirmations };
 
       if (simulator) {
         return {
           hash,
           family,
           network,
-          status: "confirmed",
+          status: (sequenceItem?.confirmations ?? requiredConfirmations) >= requiredConfirmations ? "confirmed" : "confirming",
+          observationStatus: "included",
           providerUrl,
           polledAt,
-          ledger: 1,
+          ledger: sequenceItem?.ledger ?? 1,
+          confirmations: sequenceItem?.confirmations ?? requiredConfirmations,
+          requiredConfirmations,
           matchedEffects: undefined,
           verificationDetail: "Simulated on-chain confirmation (fixture coverage).",
         };
@@ -230,7 +248,7 @@ export function getStellarChainAdapter(options: StellarAdapterOptions): {
 
       const real = await safeGetTransaction(hash, providerUrl).catch(() => undefined);
       if (!real) {
-        return { hash, family, network, status: "pending", providerUrl, polledAt };
+        return { hash, family, network, status: "pending", observationStatus: "not_found", providerUrl, polledAt, confirmations: 0, requiredConfirmations };
       }
 
       const decodedSource = decodeStellarEnvelopeSource(real, networkPassphrase);
@@ -252,7 +270,21 @@ export function getStellarChainAdapter(options: StellarAdapterOptions): {
         };
       }
 
-      return { ...mapped, matchedEffects: effectsCheck.matched, verificationDetail: effectsCheck.detail };
+      if (mapped.status === "confirmed") {
+        const latestLedger = await safeGetLatestLedger(providerUrl).catch(() => mapped.ledger);
+        const confirmations = mapped.ledger && latestLedger ? Math.max(0, latestLedger - mapped.ledger + 1) : 1;
+        return {
+          ...mapped,
+          status: confirmations >= requiredConfirmations ? "confirmed" : "confirming",
+          observationStatus: "included",
+          confirmations,
+          requiredConfirmations,
+          matchedEffects: effectsCheck.matched,
+          verificationDetail: effectsCheck.detail,
+        };
+      }
+
+      return { ...mapped, confirmations: 0, requiredConfirmations, matchedEffects: effectsCheck.matched, verificationDetail: effectsCheck.detail };
     },
   };
 }
@@ -293,6 +325,12 @@ async function safeGetTransaction(hash: string, providerUrl: string): Promise<St
   } catch {
     return undefined;
   }
+}
+
+async function safeGetLatestLedger(providerUrl: string): Promise<number | undefined> {
+  const server = new rpc.Server(providerUrl, { allowHttp: false, timeout: 8_000 });
+  const latest = await server.getLatestLedger();
+  return toLedgerNumber((latest as unknown as Record<string, unknown>).sequence);
 }
 
 function decodeStellarEnvelopeSource(response: StellarRpcGetResponse, networkPassphrase: string): string | undefined {
@@ -340,14 +378,14 @@ function mapStellarPollResponse(response: StellarRpcGetResponse, hash: string, f
   const sourceAccount = decodedSource ?? (typeof record.sourceAccount === "string" ? record.sourceAccount : undefined);
 
   if (status === "SUCCESS") {
-    return { hash, family, network, status: "confirmed", providerUrl, polledAt, ledger, createdAt, resultXdr, sourceAccount };
+    return { hash, family, network, status: "confirmed", observationStatus: "included", providerUrl, polledAt, ledger, createdAt, resultXdr, sourceAccount };
   }
 
   if (status === "FAILED") {
-    return { hash, family, network, status: "failed", providerUrl, polledAt, ledger, createdAt, resultXdr, revertReason: resultXdr };
+    return { hash, family, network, status: "failed", observationStatus: "failed", providerUrl, polledAt, ledger, createdAt, resultXdr, revertReason: resultXdr };
   }
 
-  return { hash, family, network, status: "pending", providerUrl, polledAt };
+  return { hash, family, network, status: "pending", observationStatus: "pending", providerUrl, polledAt };
 }
 
 function toLedgerNumber(value: unknown): number | undefined {

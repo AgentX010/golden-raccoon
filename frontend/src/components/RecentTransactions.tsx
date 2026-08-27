@@ -5,6 +5,12 @@ function shortHash(hash: string) {
   return `${hash.slice(0, 7)}...${hash.slice(-5)}`;
 }
 
+const statusTone: Record<TransactionRecord["lifecycleStatus"], string> = {
+  prepared: "text-white/60", submitted: "text-sky-300", pending: "text-sky-300", confirming: "text-amber-300",
+  confirmed: "text-emerald-300", failed: "text-rose-300", replaced: "text-amber-300", reorged: "text-rose-300",
+  dropped: "text-rose-300", manual_review: "text-amber-300", expired: "text-white/50", user_rejected: "text-white/50",
+};
+
 export function RecentTransactions({ transactions }: { transactions: TransactionRecord[] }) {
   return (
     <section className="glass-panel rounded-[28px] p-6">
@@ -20,7 +26,15 @@ export function RecentTransactions({ transactions }: { transactions: Transaction
             </div>
             <div className="text-right">
               <div className="text-sm font-medium">{transaction.valueUsd ? formatUsd(transaction.valueUsd) : "No value"}</div>
-              <div className="mt-1 text-xs capitalize text-emerald-300">{transaction.status}</div>
+              <div className={`mt-1 text-xs capitalize ${statusTone[transaction.lifecycleStatus]}`}>{transaction.lifecycleStatus.replace("_", " ")}</div>
+              {(transaction.lifecycleStatus === "confirming" || transaction.lifecycleStatus === "reorged" || transaction.lifecycleStatus === "manual_review") && (
+                <div className="mt-1 max-w-56 text-[11px] text-white/45">
+                  {transaction.lifecycleStatus === "confirming"
+                    ? `${transaction.confirmationCount ?? 0}/${transaction.requiredConfirmations ?? 1} confirmations; funds are not final yet.`
+                    : transaction.manualReviewReason ?? "Provider evidence changed; review before taking another action."}
+                </div>
+              )}
+              {transaction.replacementHash && <div className="mt-1 text-[11px] text-amber-200">Replacement: {shortHash(transaction.replacementHash)}</div>}
             </div>
           </div>
         ))}

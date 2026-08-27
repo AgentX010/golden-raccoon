@@ -5,6 +5,7 @@ import type {
   AgentRunRecord,
   RecommendationRecord,
   TransactionRecord,
+  TransactionObservation,
   UserApprovalRecord,
   UserRule,
   X402PaymentReceipt,
@@ -211,6 +212,18 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     return rowToTransaction(data);
   }
 
+  async listTransactionObservations(hash: string): Promise<TransactionObservation[]> {
+    const { data, error } = await this.client.from("transaction_observations").select("*").eq("transaction_hash", hash).order("observed_at", { ascending: false });
+    if (error) throw new StorageError("listTransactionObservations", error);
+    return (data ?? []).map(rowToTransactionObservation);
+  }
+
+  async createTransactionObservation(observation: TransactionObservation): Promise<TransactionObservation> {
+    const { data, error } = await this.client.from("transaction_observations").upsert(transactionObservationToRow(observation), { onConflict: "transaction_hash,evidence_key", ignoreDuplicates: true }).select().maybeSingle();
+    if (error) throw new StorageError("createTransactionObservation", error);
+    return data ? rowToTransactionObservation(data) : observation;
+  }
+
   // ─── Approvals ───────────────────────────────────────────────────
 
   async listApprovalRecords(walletAddress?: string): Promise<UserApprovalRecord[]> {
@@ -365,6 +378,10 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
       approvals: approvals.count ?? 0,
       userRules: userRules.count ?? 0,
       x402PaymentReceipts: x402Receipts.count ?? 0,
+      alertRules: 0,
+      alertObservations: 0,
+      alerts: 0,
+      alertDeliveries: 0,
     };
   }
 
@@ -455,6 +472,7 @@ export class StorageError extends Error {
 type AgentRunRow = Record<string, unknown>;
 type RecommendationRow = Record<string, unknown>;
 type TransactionRow = Record<string, unknown>;
+type TransactionObservationRow = Record<string, unknown>;
 type ApprovalRow = Record<string, unknown>;
 type UserRuleRow = Record<string, unknown>;
 type X402Row = Record<string, unknown>;
@@ -538,6 +556,8 @@ function rowToTransaction(row: TransactionRow): TransactionRecord {
     asset: String(row.asset ?? ""),
     valueUsd: Number(row.value_usd ?? 0),
     status: row.status as TransactionRecord["status"],
+    lifecycleStatus: (row.lifecycle_status ?? row.status) as TransactionRecord["lifecycleStatus"],
+    chainFamily: (row.chain_family ?? "evm") as TransactionRecord["chainFamily"],
     createdAt: String(row.created_at ?? new Date().toISOString()),
     network: String(row.network ?? ""),
     walletAddress: String(row.wallet_address ?? ""),
@@ -545,6 +565,15 @@ function rowToTransaction(row: TransactionRow): TransactionRecord {
     decisionId: row.decision_id ? String(row.decision_id) : undefined,
     simulationStatus: row.simulation_status as TransactionRecord["simulationStatus"] ?? undefined,
     policyStatus: row.policy_status as TransactionRecord["policyStatus"] ?? undefined,
+    pollAttempts: Number(row.poll_attempts ?? 0),
+    confirmationCount: Number(row.confirmation_count ?? 0),
+    requiredConfirmations: Number(row.required_confirmations ?? 1),
+    finalityReached: Boolean(row.finality_reached ?? false),
+    replacementHash: row.replacement_hash ? String(row.replacement_hash) : undefined,
+    lastObservedBlockHash: row.last_observed_block_hash ? String(row.last_observed_block_hash) : undefined,
+    missingObservationCount: Number(row.missing_observation_count ?? 0),
+    manualReviewReason: row.manual_review_reason ? String(row.manual_review_reason) : undefined,
+    observationCount: Number(row.observation_count ?? 0),
   };
 }
 
@@ -557,12 +586,67 @@ function transactionToRow(record: TransactionRecord): TransactionRow {
     asset: record.asset,
     value_usd: record.valueUsd,
     status: record.status,
+    lifecycle_status: record.lifecycleStatus,
+    chain_family: record.chainFamily,
     wallet_address: record.walletAddress ?? "",
     network: record.network,
     user_approved: record.userApproved ?? false,
     simulation_status: record.simulationStatus ?? null,
     policy_status: record.policyStatus ?? null,
+    poll_attempts: record.pollAttempts ?? 0,
+    confirmation_count: record.confirmationCount ?? 0,
+    required_confirmations: record.requiredConfirmations ?? 1,
+    finality_reached: record.finalityReached ?? false,
+    replacement_hash: record.replacementHash ?? null,
+    last_observed_block_hash: record.lastObservedBlockHash ?? null,
+    missing_observation_count: record.missingObservationCount ?? 0,
+    manual_review_reason: record.manualReviewReason ?? null,
+    observation_count: record.observationCount ?? 0,
     created_at: record.createdAt,
+  };
+}
+
+function rowToTransactionObservation(row: TransactionObservationRow): TransactionObservation {
+  return {
+    id: String(row.id ?? ""),
+    hash: String(row.transaction_hash ?? ""),
+    evidenceKey: String(row.evidence_key ?? ""),
+    chainFamily: row.chain_family as TransactionObservation["chainFamily"],
+    network: String(row.network ?? ""),
+    provider: String(row.provider ?? ""),
+    providerUrl: row.provider_url ? String(row.provider_url) : undefined,
+    status: row.status as TransactionObservation["status"],
+    blockNumber: row.block_number == null ? undefined : Number(row.block_number),
+    blockHash: row.block_hash ? String(row.block_hash) : undefined,
+    ledgerSequence: row.ledger_sequence == null ? undefined : Number(row.ledger_sequence),
+    confirmations: Number(row.confirmations ?? 0),
+    requiredConfirmations: Number(row.required_confirmations ?? 1),
+    replacementHash: row.replacement_hash ? String(row.replacement_hash) : undefined,
+    nonce: row.nonce == null ? undefined : Number(row.nonce),
+    detail: row.detail ? String(row.detail) : undefined,
+    observedAt: String(row.observed_at ?? new Date().toISOString()),
+  };
+}
+
+function transactionObservationToRow(observation: TransactionObservation): TransactionObservationRow {
+  return {
+    id: observation.id,
+    transaction_hash: observation.hash,
+    evidence_key: observation.evidenceKey,
+    chain_family: observation.chainFamily,
+    network: observation.network,
+    provider: observation.provider,
+    provider_url: observation.providerUrl ?? null,
+    status: observation.status,
+    block_number: observation.blockNumber ?? null,
+    block_hash: observation.blockHash ?? null,
+    ledger_sequence: observation.ledgerSequence ?? null,
+    confirmations: observation.confirmations,
+    required_confirmations: observation.requiredConfirmations,
+    replacement_hash: observation.replacementHash ?? null,
+    nonce: observation.nonce ?? null,
+    detail: observation.detail ?? null,
+    observed_at: observation.observedAt,
   };
 }
 
@@ -633,6 +717,7 @@ function userRuleToRow(rule: UserRule, isStellar: boolean): UserRuleRow {
 }
 
 function rowToX402Receipt(row: X402Row): X402PaymentReceipt {
+  const network = String(row.network ?? "");
   return {
     id: String(row.id ?? ""),
     requestId: String(row.request_id ?? ""),
@@ -640,7 +725,8 @@ function rowToX402Receipt(row: X402Row): X402PaymentReceipt {
     walletAddress: row.wallet_address ? String(row.wallet_address) : undefined,
     payer: row.payer ? String(row.payer) : undefined,
     transactionHash: row.transaction_hash ? String(row.transaction_hash) : undefined,
-    network: String(row.network ?? ""),
+    chainFamily: network.startsWith("stellar:") ? "stellar" : "evm",
+    network,
     asset: String(row.asset ?? ""),
     amount: String(row.amount ?? ""),
     priceUsd: String(row.price_usd ?? ""),

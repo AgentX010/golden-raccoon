@@ -791,9 +791,13 @@ export type TransactionLifecycleStatus =
   | "prepared"
   | "user_rejected"
   | "submitted"
+  | "confirming"
   | "confirmed"
   | "failed"
   | "replaced"
+  | "reorged"
+  | "dropped"
+  | "manual_review"
   | "expired"
   | "pending";
 
@@ -803,6 +807,13 @@ export type TransactionLifecycleEventName =
   | "submission_failed"
   | "user_rejected"
   | "polled"
+  | "observation_recorded"
+  | "confirmation_progress"
+  | "provider_disagreement"
+  | "reorg_detected"
+  | "replacement_detected"
+  | "dropped_detected"
+  | "manual_review_required"
   | "confirmed"
   | "failed"
   | "replaced"
@@ -817,6 +828,37 @@ export type TransactionLifecycleEvent = {
   occurredAt: string;
   provider?: string;
   providerUrl?: string;
+};
+
+export type TransactionObservationStatus =
+  | "not_found"
+  | "pending"
+  | "included"
+  | "confirmed"
+  | "failed"
+  | "replaced"
+  | "expired"
+  | "duplicate"
+  | "provider_disagreement";
+
+export type TransactionObservation = {
+  id: string;
+  hash: string;
+  evidenceKey: string;
+  chainFamily: ChainFamily;
+  network: string;
+  provider: string;
+  providerUrl?: string;
+  status: TransactionObservationStatus;
+  blockNumber?: number;
+  blockHash?: string;
+  ledgerSequence?: number;
+  confirmations: number;
+  requiredConfirmations: number;
+  replacementHash?: string;
+  nonce?: number;
+  detail?: string;
+  observedAt: string;
 };
 
 export type ChainFamily = "evm" | "stellar";
@@ -848,6 +890,7 @@ export type TransactionRecord = {
   submittedAt?: string;
   terminalAt?: string;
   lastPolledAt?: string;
+  pollAttempts?: number;
   network: string;
   walletAddress?: string;
   sourceAccount?: string;
@@ -861,6 +904,14 @@ export type TransactionRecord = {
   calldata?: string;
   explorerUrl?: string;
   failureReason?: string;
+  confirmationCount?: number;
+  requiredConfirmations?: number;
+  finalityReached?: boolean;
+  replacementHash?: string;
+  lastObservedBlockHash?: string;
+  missingObservationCount?: number;
+  manualReviewReason?: string;
+  observationCount?: number;
   stellarDetails?: {
     sequence?: string;
     feeCharged?: number;
@@ -906,6 +957,7 @@ export type PollTransactionResult = {
   polled: boolean;
   terminalReached: boolean;
   events: TransactionLifecycleEvent[];
+  observations: TransactionObservation[];
 };
 
 export type AgentRunRecord = {
