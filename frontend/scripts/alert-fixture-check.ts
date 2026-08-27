@@ -40,6 +40,10 @@ import {
 } from "../src/server/observability/alertEngine";
 import { buildSanitizedAlertPayload, shortWalletHint } from "../src/server/observability/alertSanitize";
 import { deliverAlertToChannel } from "../src/server/observability/alertDeliveries";
+import {
+  resetAlertDeliveryTransport,
+  setAlertDeliveryTransport,
+} from "../src/server/observability/delivery/http";
 import { ensureDefaultRulesForWallet, ingestAgentRunAlerts } from "../src/server/observability/alertIngestion";
 import { extractObservationsForRun } from "../src/server/observability/observations";
 import { AlertDetail } from "../src/components/AlertHistoryList";
@@ -128,7 +132,7 @@ async function runTriggerLifecycle() {
   const rule = makeRule({ cooldownMinutes: 30 });
 
   const firstObservation = makeObservation({ value: 82 });
-  const firstEvaluation = evaluateAndPersistObservation(firstObservation, rule);
+  const firstEvaluation = await evaluateAndPersistObservation(firstObservation, rule);
 
   assert(firstEvaluation.outcome === "triggered", "First observation must trigger.");
   assert(firstEvaluation.alert && firstEvaluation.alert.status === "triggered", "Fresh alert must be in triggered state.");
@@ -147,7 +151,7 @@ async function runTriggerLifecycle() {
     direction: firstObservation.direction,
     evidence: firstObservation.evidence,
   });
-  const dupEvaluation = evaluateAndPersistObservation(dupObservation, rule);
+  const dupEvaluation = await evaluateAndPersistObservation(dupObservation, rule);
 
   assert(dupEvaluation.outcome === "no_match" && dupEvaluation.reason === "dedupe", "Identical evidence must dedupe.");
 }
@@ -155,7 +159,7 @@ async function runTriggerLifecycle() {
 async function runRecoveryAndHysteresis() {
   const rule = makeRule({ cooldownMinutes: 5 });
   const bad = makeObservation({ value: 90 });
-  const triggered = evaluateAndPersistObservation(bad, rule);
+  const triggered = await evaluateAndPersistObservation(bad, rule);
   assert(triggered.outcome === "triggered", "Recovery fixture setup: must trigger.");
 
   const borderline = makeObservation({
@@ -163,7 +167,7 @@ async function runRecoveryAndHysteresis() {
     value: 72,
     evidence: bad.evidence,
   });
-  const borderlineEvaluation = evaluateAndPersistObservation(borderline, rule);
+  const borderlineEvaluation = await evaluateAndPersistObservation(borderline, rule);
 
   assert(borderlineEvaluation.outcome === "no_match", "Within-hysteresis value must NOT recover.");
   assert(["dedupe", "below_threshold"].includes(borderlineEvaluation.reason), "Within-hysteresis value must dedupe.");
@@ -173,7 +177,7 @@ async function runRecoveryAndHysteresis() {
     value: 50,
     evidence: bad.evidence,
   });
-  const recovery = evaluateAndPersistObservation(fullyRecovered, rule);
+  const recovery = await evaluateAndPersistObservation(fullyRecovered, rule);
 
   assert(recovery.outcome === "recovered", "Value below threshold minus hysteresis must recover.");
   if (recovery.outcome === "recovered") {
@@ -186,7 +190,7 @@ async function runRecoveryAndHysteresis() {
 async function runDeterioration() {
   const rule = makeRule({ cooldownMinutes: 30 });
   const first = makeObservation({ value: 80 });
-  const firstEval = evaluateAndPersistObservation(first, rule);
+  const firstEval = await evaluateAndPersistObservation(first, rule);
   assert(firstEval.outcome === "triggered", "Deterioration fixture setup: must trigger.");
   if (firstEval.outcome !== "triggered") return;
 
@@ -197,7 +201,7 @@ async function runDeterioration() {
     value: 95,
     evidence: { ...first.evidence, sourceSnapshotHash: "snap_new" },
   });
-  const deterioration = evaluateAndPersistObservation(worse, rule);
+  const deterioration = await evaluateAndPersistObservation(worse, rule);
 
   assert(deterioration.outcome === "deteriorated", "Worsening observation must deteriorate the existing alert.");
   if (deterioration.outcome !== "deteriorated") return;
@@ -221,7 +225,7 @@ async function runDeterioration() {
     value: 110,
     evidence: { ...first.evidence, sourceSnapshotHash: "snap_third" },
   });
-  const deterioration3 = evaluateAndPersistObservation(even_worse, rule);
+  const deterioration3 = await evaluateAndPersistObservation(even_worse, rule);
 
   assert(deterioration3.outcome === "deteriorated", "Second worsening observation must deteriorate again.");
   if (deterioration3.outcome === "deteriorated") {
@@ -235,19 +239,19 @@ async function runDeterioration() {
 async function runCooldown() {
   const rule = makeRule({ cooldownMinutes: 60 });
   const first = makeObservation({ value: 85 });
-  const triggered = evaluateAndPersistObservation(first, rule);
+  const triggered = await evaluateAndPersistObservation(first, rule);
   assert(triggered.outcome === "triggered", "Cooldown fixture setup: must trigger.");
 
   const recovered = makeObservation({ observationKey: first.observationKey, value: 50, evidence: first.evidence });
-  evaluateAndPersistObservation(recovered, rule);
+  await evaluateAndPersistObservation(recovered, rule);
 
   const repeatBad = makeObservation({ observationKey: first.observationKey, value: 90, evidence: { ...first.evidence, runId: "run_repeat" } });
-  const cooldownEvaluation = evaluateAndPersistObservation(repeatBad, rule);
+  const cooldownEvaluation = await evaluateAndPersistObservation(repeatBad, rule);
 
   assert(cooldownEvaluation.outcome === "no_match" && cooldownEvaluation.reason === "cooldown", "Re-trigger inside cooldown window must cool down.");
 
   const shortRule = makeRule({ cooldownMinutes: 0, id: "rule_short" });
-  const shortEvaluation = evaluateAndPersistObservation(makeObservation({ observationKey: first.observationKey, value: 95, evidence: { ...first.evidence, runId: "run_after" } }), shortRule);
+  const shortEvaluation = await evaluateAndPersistObservation(makeObservation({ observationKey: first.observationKey, value: 95, evidence: { ...first.evidence, runId: "run_after" } }), shortRule);
   assert(shortEvaluation.outcome === "triggered", "Out of cooldown must trigger a fresh alert.");
 }
 
@@ -255,7 +259,7 @@ async function runWalletIsolation() {
   const walletARule = makeRule({ walletAddress: WALLET_A, observationKey: undefined });
   const walletBObservation = makeObservation({ walletAddress: WALLET_B, value: 90, observationKey: "onchain:fixture" });
   const walletAAlertsBefore = listAlerts(WALLET_A).length;
-  const evaluation = evaluateAndPersistObservation(walletBObservation, walletARule);
+  const evaluation = await evaluateAndPersistObservation(walletBObservation, walletARule);
 
   assert(evaluation.outcome === "no_match", "Cross-wallet observation against a wallet-A rule must NOT trigger.");
   assert(listAlerts(WALLET_A).length === walletAAlertsBefore, "Wallet A alert count must be unchanged when wallet B observation is processed.");
@@ -271,7 +275,7 @@ async function runWalletIsolation() {
 async function runDeliveryAdapters() {
   const rule = makeRule({ cooldownMinutes: 1 });
   const observation = makeObservation({ value: 88 });
-  const triggered = evaluateAndPersistObservation(observation, rule);
+  const triggered = await evaluateAndPersistObservation(observation, rule);
   assert(triggered.outcome === "triggered", "Delivery fixture must trigger.");
 
   if (triggered.outcome !== "triggered") return;
@@ -280,7 +284,7 @@ async function runDeliveryAdapters() {
 
   const telegramDelivery = listAlertDeliveries(triggered.alert.id).find((delivery) => delivery.channel === "telegram");
   assert(telegramDelivery?.status === "skipped", "Telegram delivery without env must be skipped.");
-  assert(deliverAlertToChannel("discord", {} as Parameters<typeof deliverAlertToChannel>[1], { walletAddress: WALLET_A, triggerType: "critical_risk", severity: "high" }).status === "skipped", "Discord without env must skip.");
+  assert((await deliverAlertToChannel("discord", {} as Parameters<typeof deliverAlertToChannel>[1], { walletAddress: WALLET_A, triggerType: "critical_risk", severity: "high" })).status === "skipped", "Discord without env must skip.");
 }
 
 async function runDeliveryFailureFixture() {
@@ -290,13 +294,20 @@ async function runDeliveryFailureFixture() {
   const previousTierEmail = process.env.ALERT_EMAIL_WEBHOOK_URL;
   const previousTierDiscord = process.env.ALERT_DISCORD_WEBHOOK_URL;
   process.env.ALERT_EMAIL_WEBHOOK_URL = "https://example.invalid/email";
+  process.env.ALERT_EMAIL_WEBHOOK_SECRET = "fixture-secret";
   process.env.ALERT_DISCORD_WEBHOOK_URL = "https://example.invalid/discord";
   process.env.ALERT_FORCE_FAIL_CHANNELS = "email,telegram";
+  process.env.ALERT_DELIVERY_BACKOFF_MS = "0";
+  setAlertDeliveryTransport(async () => ({
+    status: 200,
+    headers: { "content-type": "application/json" },
+    bodyText: JSON.stringify({ id: "discord_fixture_msg" }),
+  }));
 
   try {
     const rule = makeRule({ cooldownMinutes: 0, id: `rule_force_fail_${Math.random().toString(36).slice(2, 8)}` });
     const observation = makeObservation({ value: 92 });
-    const triggered = evaluateAndPersistObservation(observation, rule);
+    const triggered = await evaluateAndPersistObservation(observation, rule);
 
     assert(triggered.outcome === "triggered", "Force-fail fixture must trigger.");
     if (triggered.outcome !== "triggered") return;
@@ -314,13 +325,16 @@ async function runDeliveryFailureFixture() {
     assert(discord?.status === "delivered", "discord must remain delivered (override does not include it).");
 
     // Direct adapter call outside of the alert should also respect the override.
-    assert(deliverAlertToChannel("email", {} as Parameters<typeof deliverAlertToChannel>[1], { walletAddress: WALLET_A, triggerType: "critical_risk", severity: "high" }).status === "failed", "deliverAlertToChannel must honor ALERT_FORCE_FAIL_CHANNELS directly.");
+    assert((await deliverAlertToChannel("email", {} as Parameters<typeof deliverAlertToChannel>[1], { walletAddress: WALLET_A, triggerType: "critical_risk", severity: "high" })).status === "failed", "deliverAlertToChannel must honor ALERT_FORCE_FAIL_CHANNELS directly.");
   } finally {
     if (previousTierEmail === undefined) delete process.env.ALERT_EMAIL_WEBHOOK_URL;
     else process.env.ALERT_EMAIL_WEBHOOK_URL = previousTierEmail;
     if (previousTierDiscord === undefined) delete process.env.ALERT_DISCORD_WEBHOOK_URL;
     else process.env.ALERT_DISCORD_WEBHOOK_URL = previousTierDiscord;
+    delete process.env.ALERT_EMAIL_WEBHOOK_SECRET;
     delete process.env.ALERT_FORCE_FAIL_CHANNELS;
+    delete process.env.ALERT_DELIVERY_BACKOFF_MS;
+    resetAlertDeliveryTransport();
   }
 }
 
@@ -392,21 +406,21 @@ async function runIngestionEndToEnd() {
   });
   void runRecord;
 
-  const result = ingestionRunObservationFlow(observationHistory, rule);
+  const result = await ingestionRunObservationFlow(observationHistory, rule);
 
   assert(result.recoveries > 0 || result.triggers > 0, "Ingestion simulation must yield observable counts.");
   void ensureAlertRulesForWallet;
   void extractObservationsForRun;
 }
 
-function ingestionRunObservationFlow(observations: Parameters<typeof createAlertObservation>[0][], rule: ReturnType<typeof makeRule>) {
+async function ingestionRunObservationFlow(observations: Parameters<typeof createAlertObservation>[0][], rule: ReturnType<typeof makeRule>) {
   let triggers = 0;
   let recoveries = 0;
   let dedups = 0;
 
   for (const input of observations) {
     const observation = createAlertObservation(input);
-    const evaluation = evaluateAndPersistObservation(observation, rule);
+    const evaluation = await evaluateAndPersistObservation(observation, rule);
 
     if (evaluation.outcome === "triggered") triggers += 1;
     if (evaluation.outcome === "recovered") recoveries += 1;
@@ -511,7 +525,7 @@ async function runIncompleteDataSuppression() {
   const observationBeforeAlerts = listAlerts(WALLET_A).length;
 
   for (const observation of observations) {
-    evaluateAndPersistObservation(observation, rule);
+    await evaluateAndPersistObservation(observation, rule);
   }
 
   const alertsAfter = listAlerts(WALLET_A).filter((alert) => alert.triggerType === "critical_risk" && alert.observationKey === "onchain:incomplete");
@@ -547,16 +561,16 @@ async function runUIRenderSmokeTest() {
   const uiKey = `onchain:ui-render-${Math.random().toString(36).slice(2, 8)}`;
   const rule = makeRule({ cooldownMinutes: 0, id: `rule_ui_${Math.random().toString(36).slice(2, 8)}`, observationKey: uiKey });
   const first = makeObservation({ value: 80, observationKey: uiKey });
-  const triggered = evaluateAndPersistObservation(first, rule);
+  const triggered = await evaluateAndPersistObservation(first, rule);
 
   assert(triggered.outcome === "triggered", "UI fixture setup must trigger.");
   if (triggered.outcome !== "triggered") return;
 
   const second = makeObservation({ observationKey: first.observationKey, value: 92, evidence: { ...first.evidence, sourceSnapshotHash: "snap_ui_2" } });
-  evaluateAndPersistObservation(second, rule);
+  await evaluateAndPersistObservation(second, rule);
 
   const third = makeObservation({ observationKey: first.observationKey, value: 110, evidence: { ...first.evidence, sourceSnapshotHash: "snap_ui_3" } });
-  evaluateAndPersistObservation(third, rule);
+  await evaluateAndPersistObservation(third, rule);
 
   const hydrated = getAlert(triggered.alert.id);
   assert(hydrated, "Alert must be retrievable by id for UI rendering.");
@@ -604,7 +618,7 @@ async function runUIRenderSmokeTest() {
     value: 92,
     evidence: { ...first.evidence, runId: "run_fresh", sourceSnapshotHash: "snap_fresh" },
   });
-  evaluateAndPersistObservation(freshTriggerObservation, priorRule);
+  await evaluateAndPersistObservation(freshTriggerObservation, priorRule);
   const hydratedWithPrior = listAlerts(WALLET_A).find(
     (alert) => alert.observationKey === priorKey && alert.evidenceData.evidenceAfterObservationId === freshTriggerObservation.id,
   );

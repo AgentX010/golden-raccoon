@@ -1,15 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, ChevronRight, Link2 } from "lucide-react";
-import type { Alert, AlertSeverity, AlertStatus } from "@/server/types";
+import { Check, ChevronRight, Link2, RotateCcw } from "lucide-react";
+import type { Alert, AlertDeliveryChannel, AlertDeliveryStatus, AlertSeverity, AlertStatus } from "@/server/types";
 import { useWalletSession } from "@/hooks/useWalletSession";
+
+type DeliveryAuditRow = {
+  id: string;
+  alertId: string;
+  channel: AlertDeliveryChannel;
+  status: AlertDeliveryStatus;
+  attemptCount: number;
+  terminal?: boolean;
+  errorDetail?: string;
+  nextRetryAt?: string;
+  providerMessageId?: string;
+};
 
 type EnrichedAlert = Alert & {
   deliverySummary?: {
     delivered: Array<Alert["deliverySummary"] extends { delivered?: Array<infer T> } | undefined ? T : never>;
     failed: Array<{ channel: string; error: string }>;
     skipped: Array<{ channel: string; reason: string }>;
+    pending?: AlertDeliveryChannel[];
   };
   deliveryCount: number;
   matchingRule?: { triggerType: Alert["triggerType"]; severity: AlertSeverity } | null;
@@ -33,6 +46,13 @@ const statusTones: Record<AlertStatus, string> = {
   acknowledged: "border-white/10 bg-white/5 text-white/58",
 };
 
+const deliveryStatusLabel: Record<AlertDeliveryStatus, string> = {
+  pending: "Pending",
+  delivered: "Delivered",
+  failed: "Failed",
+  skipped: "Skipped",
+};
+
 const VISIBLE_PAGE_SIZE = 30;
 
 export function AlertHistoryList({ initialData }: { initialData?: AlertResponse }) {
@@ -41,6 +61,8 @@ export function AlertHistoryList({ initialData }: { initialData?: AlertResponse 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deliveryRows, setDeliveryRows] = useState<Record<string, DeliveryAuditRow[]>>({});
+  const [retryBusyId, setRetryBusyId] = useState<string | null>(null);
   // Progressive disclosure: render only a page of already-fetched alerts at a
   // time, so a long history does not force hundreds of DOM nodes up front on
   // constrained mobile. See docs/PERFORMANCE_BUDGETS.md.
@@ -65,6 +87,29 @@ export function AlertHistoryList({ initialData }: { initialData?: AlertResponse 
     return () => controller.abort();
   }, [address]);
 
+  useEffect(() => {
+    if (!address || !expandedId) return;
+    const controller = new AbortController();
+
+    fetch(`/api/alerts/deliveries?alertId=${encodeURIComponent(expandedId)}`, {
+      cache: "no-store",
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("Failed to load deliveries"))))
+      .then((rows: DeliveryAuditRow[]) => {
+        if (!controller.signal.aborted) {
+          setDeliveryRows((current) => ({ ...current, [expandedId]: rows }));
+        }
+      })
+      .catch((err: Error) => {
+        if (err.name === "AbortError" || controller.signal.aborted) return;
+        setError(err.message);
+      });
+
+    return () => controller.abort();
+  }, [address, expandedId]);
+
   async function acknowledge(alertId: string) {
     if (!address) return;
     setBusyId(alertId);
@@ -85,6 +130,28 @@ export function AlertHistoryList({ initialData }: { initialData?: AlertResponse 
       alerts: current.alerts.map((alert) => alert.id === alertId ? { ...alert, status: "acknowledged", acknowledgedAt: new Date().toISOString() } : alert),
       counts: { ...current.counts, triggered: Math.max(0, current.counts.triggered - 1), acknowledged: current.counts.acknowledged + 1 },
     } : current);
+  }
+
+  async function retryDelivery(deliveryId: string, alertId: string) {
+    setRetryBusyId(deliveryId);
+    setError(null);
+    const response = await fetch("/api/alerts/deliveries", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deliveryId }),
+    });
+    setRetryBusyId(null);
+    if (!response.ok) {
+      const detail = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(detail.error ?? "Could not retry delivery.");
+      return;
+    }
+    const updated = (await response.json()) as DeliveryAuditRow;
+    setDeliveryRows((current) => ({
+      ...current,
+      [alertId]: (current[alertId] ?? []).map((row) => (row.id === deliveryId ? { ...row, ...updated } : row)),
+    }));
   }
 
   if (!isConnected) {
@@ -169,7 +236,14 @@ export function AlertHistoryList({ initialData }: { initialData?: AlertResponse 
                 </div>
               </button>
 
-              {isOpen ? <AlertDetail alert={alert} /> : null}
+              {isOpen ? (
+                <AlertDetail
+                  alert={alert}
+                  deliveries={deliveryRows[alert.id]}
+                  retryBusyId={retryBusyId}
+                  onRetry={(deliveryId) => void retryDelivery(deliveryId, alert.id)}
+                />
+              ) : null}
             </article>
           );
         })}
@@ -187,7 +261,17 @@ export function AlertHistoryList({ initialData }: { initialData?: AlertResponse 
   );
 }
 
-export function AlertDetail({ alert }: { alert: EnrichedAlert }) {
+export function AlertDetail({
+  alert,
+  deliveries,
+  retryBusyId,
+  onRetry,
+}: {
+  alert: EnrichedAlert;
+  deliveries?: DeliveryAuditRow[];
+  retryBusyId?: string | null;
+  onRetry?: (deliveryId: string) => void;
+}) {
   const chain = alert.evidenceData.deteriorationObservationIds ?? [];
 
   return (
@@ -243,6 +327,13 @@ export function AlertDetail({ alert }: { alert: EnrichedAlert }) {
       ) : null}
 
       {alert.deliverySummary ? <DeliverySummary summary={alert.deliverySummary} /> : null}
+      {deliveries ? (
+        <DeliveryAuditList
+          deliveries={deliveries}
+          retryBusyId={retryBusyId}
+          onRetry={onRetry}
+        />
+      ) : null}
     </div>
   );
 }
@@ -298,13 +389,73 @@ function DeliverySummary({ summary }: { summary: NonNullable<EnrichedAlert["deli
             {summary.failed?.length ? summary.failed.map((entry) => `${entry.channel}: ${entry.error}`).join("; ") : "—"}
           </div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/64 lg:col-span-2">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/64">
           <div className="text-[10px] opacity-65">Skipped</div>
           <div className="mt-1 text-xs">
             {summary.skipped?.length ? summary.skipped.map((entry) => `${entry.channel}: ${entry.reason}`).join("; ") : "—"}
           </div>
         </div>
+        <div className="rounded-xl border border-[#d9a441]/25 bg-[#d9a441]/8 p-2 text-[#f2c86d]">
+          <div className="text-[10px] opacity-65">Pending</div>
+          <div className="mt-1 text-xs font-semibold">
+            {summary.pending?.length ? summary.pending.join(", ") : "—"}
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function DeliveryAuditList({
+  deliveries,
+  retryBusyId,
+  onRetry,
+}: {
+  deliveries: DeliveryAuditRow[];
+  retryBusyId?: string | null;
+  onRetry?: (deliveryId: string) => void;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.18em] opacity-55">Delivery audit</div>
+      <ul className="mt-1 space-y-2">
+        {deliveries.map((delivery) => {
+          const canRetry =
+            delivery.status === "failed" &&
+            delivery.terminal !== true &&
+            delivery.channel !== "in_app" &&
+            Boolean(onRetry);
+
+          return (
+            <li
+              key={delivery.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-white/82">
+                  {delivery.channel} · {deliveryStatusLabel[delivery.status]}
+                </div>
+                <div className="mt-0.5 text-[10px] text-white/46">
+                  attempts {delivery.attemptCount}
+                  {delivery.terminal ? " · terminal" : ""}
+                  {delivery.errorDetail ? ` · ${delivery.errorDetail}` : ""}
+                </div>
+              </div>
+              {canRetry ? (
+                <button
+                  type="button"
+                  disabled={retryBusyId === delivery.id}
+                  onClick={() => onRetry?.(delivery.id)}
+                  className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 text-[11px] text-white/72 transition hover:text-white"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

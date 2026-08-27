@@ -8,15 +8,18 @@ import type {
 } from "@/server/types";
 import {
   createAlert,
-  createAlertDelivery,
   listAlertObservations,
   listAlertRules,
   listAlerts,
   updateAlert,
-  updateAlertDelivery,
 } from "@/server/storage";
 import { buildSanitizedAlertPayload } from "@/server/observability/alertSanitize";
-import { deliverAlertToChannel } from "@/server/observability/alertDeliveries";
+import {
+  buildDeliveryIdempotencyKey,
+  deliverAlertToChannel,
+  findDeliveryByIdempotencyKey,
+  persistDeliveryResult,
+} from "@/server/observability/alertDeliveries";
 
 export type AlertEvaluation =
   | { outcome: "no_match"; reason: "rule_disabled" | "trigger_mismatch" | "key_mismatch" | "wallet_mismatch" | "cooldown" | "dedupe" | "below_threshold" | "no_history" | "incomplete_data"; observation: AlertObservation; rule: AlertRule; previousAlert?: Alert }
@@ -286,10 +289,10 @@ export function decideObservation(
  *    current "After" view, and update `afterValue` / hashes.
  *  - On recovery: status flips to recovered; chain remains intact.
  */
-export function evaluateAndPersistObservation(
+export async function evaluateAndPersistObservation(
   observation: AlertObservation,
   rule: AlertRule,
-): AlertEvaluation {
+): Promise<AlertEvaluation> {
   const now = new Date();
   const decision = decideObservation(observation, rule, now);
 
@@ -325,7 +328,7 @@ export function evaluateAndPersistObservation(
     if (!recoveredAlert) {
       return { outcome: "no_match", reason: "below_threshold", observation, rule, previousAlert: decision.activeAlert };
     }
-    const deliveries = fanOutDeliveries(recoveredAlert, observation);
+    const deliveries = await fanOutDeliveries(recoveredAlert, observation, "recover");
 
     return { outcome: "recovered", observation, rule, previousAlert: decision.activeAlert!, alert: recoveredAlert, deliveries };
   }
@@ -391,7 +394,7 @@ export function evaluateAndPersistObservation(
       deteriorationObservationIds: [observation.id],
     },
   });
-  const deliveries = fanOutDeliveries(alert, observation);
+  const deliveries = await fanOutDeliveries(alert, observation, "trigger");
 
   return { outcome: "triggered", observation, rule, alert, deliveries };
 }
@@ -399,30 +402,28 @@ export function evaluateAndPersistObservation(
 /**
  * Fan-out delivery to every channel. Persists each delivery row, returning
  * the final state. UI helpers read from the storage layer.
+ *
+ * Idempotent for `(alertId, channel, event)` via delivery idempotency keys.
  */
-export function fanOutDeliveries(alert: Alert, observation: AlertObservation): AlertDelivery[] {
+export async function fanOutDeliveries(
+  alert: Alert,
+  observation: AlertObservation,
+  event: "trigger" | "recover" = "trigger",
+): Promise<AlertDelivery[]> {
   const sanitized = buildSanitizedAlertPayload(alert, observation.evidence, { walletAddressHint: alert.walletAddress });
   const channels = ["in_app", "email", "telegram", "discord"] as const;
   const out: AlertDelivery[] = [];
 
   for (const channel of channels) {
-    const created = createAlertDelivery({
-      alertId: alert.id,
-      walletAddress: alert.walletAddress,
-      channel,
-      status: "pending",
-      sanitizedPayload: sanitized,
-      attemptCount: 0,
-    });
-    const result = deliverAlertToChannel(channel, sanitized, alert);
-    const updated = updateAlertDelivery(created.id, alert.walletAddress, {
-      status: result.status,
-      ...(result.errorDetail ? { errorDetail: result.errorDetail } : {}),
-      ...(result.status === "delivered" ? { sentAt: new Date().toISOString() } : {}),
-      attemptCount: result.attemptCount ?? 0,
-    });
+    const idempotencyKey = buildDeliveryIdempotencyKey(alert.id, channel, event);
+    const existing = findDeliveryByIdempotencyKey(alert.id, alert.walletAddress, idempotencyKey);
+    if (existing) {
+      out.push(existing);
+      continue;
+    }
 
-    out.push(updated ?? created);
+    const result = await deliverAlertToChannel(channel, sanitized, alert, { idempotencyKey });
+    out.push(persistDeliveryResult(alert, channel, sanitized, result, idempotencyKey));
   }
 
   return out;

@@ -657,13 +657,28 @@ create table if not exists alert_deliveries (
   sanitized_payload jsonb not null default '{}'::jsonb,
   attempt_count integer not null default 0,
   created_at timestamptz not null default now(),
-  sent_at timestamptz
+  sent_at timestamptz,
+  idempotency_key text,
+  provider_message_id text,
+  next_retry_at timestamptz,
+  last_attempt_at timestamptz,
+  terminal boolean not null default false
 );
+
+alter table alert_deliveries add column if not exists idempotency_key text;
+alter table alert_deliveries add column if not exists provider_message_id text;
+alter table alert_deliveries add column if not exists next_retry_at timestamptz;
+alter table alert_deliveries add column if not exists last_attempt_at timestamptz;
+alter table alert_deliveries add column if not exists terminal boolean;
+alter table alert_deliveries alter column terminal set default false;
 
 create index if not exists alert_rules_wallet_enabled_idx on alert_rules(wallet_address, enabled);
 create index if not exists alert_observations_wallet_trigger_idx on alert_observations(wallet_address, trigger_type, observation_key, created_at desc);
 create index if not exists alerts_wallet_status_idx on alerts(wallet_address, status, triggered_at desc);
 create index if not exists alert_deliveries_alert_idx on alert_deliveries(alert_id, channel);
+create unique index if not exists alert_deliveries_idempotency_wallet_idx
+  on alert_deliveries(wallet_address, idempotency_key)
+  where idempotency_key is not null;
 
 -- Watchlist & discovery tables (upstream V3 discovery).
 create table if not exists watchlist_entries (

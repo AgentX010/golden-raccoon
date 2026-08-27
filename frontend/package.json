@@ -10,10 +10,10 @@
     "lint": "eslint",
     "test:agents": "tsx --tsconfig tsconfig.json scripts/agent-fixture-check.ts",
     "test:auto-mode": "node --import tsx scripts/auto-mode-fixture-check.ts",
-    "test:alerts": "tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",
+    "test:alerts": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",
     "test:simulation": "tsx --tsconfig tsconfig.json scripts/simulation-check.ts",
     "test:stellar-config": "tsx --tsconfig tsconfig.json scripts/stellar-config-check.ts",
-    "test:alerts:ui": "tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",
+    "test:alerts:ui": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/alert-fixture-check.ts",
     "test:stellar-portfolio": "tsx --tsconfig tsconfig.json scripts/stellar-portfolio-check.ts",
     "test:a11y": "tsx --tsconfig tsconfig.json scripts/a11y-check.ts",
     "verify": "npm run test:auto-mode && npm run test:agents && npm run test:stellar-portfolio && npm run test:alerts && npm run test:a11y && npm run lint && npm run build && npm run test:portfolio-stress",
@@ -24,7 +24,8 @@
     "test:portfolio-stress": "tsx --tsconfig tsconfig.json scripts/portfolio-stress-check.ts",
     "test:risk-snapshots": "tsx --tsconfig tsconfig.json scripts/risk-snapshot-check.ts",
     "test": "vitest run src/server/observability/__tests__/slo.test.ts",
-    "test:reconciliation": "node --conditions=react-server --import tsx scripts/transaction-reconciliation-check.ts"
+    "test:reconciliation": "node --conditions=react-server --import tsx scripts/transaction-reconciliation-check.ts",
+    "test:alert-delivery": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/alert-delivery-check.ts"
   },
   "dependencies": {
     "@coinbase/x402": "^2.1.0",

@@ -135,3 +135,24 @@ export function redactWalletAddressInEvidence(evidence: AlertObservation["eviden
     sourceLabels: Array.isArray(evidence.sourceLabels) ? evidence.sourceLabels.slice(0, 5) : [],
   };
 }
+
+/**
+ * Redact tokens, webhook URLs, chat IDs, emails, and wallet addresses from
+ * delivery error details before they are logged or persisted.
+ */
+export function sanitizeDeliveryErrorDetail(detail: string | undefined): string | undefined {
+  if (!detail) return undefined;
+
+  let out = detail;
+
+  out = out.replace(/https?:\/\/[^\s)"']+/gi, "[url-redacted]");
+  out = out.replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[email-redacted]");
+  out = out.replace(/\b0x[a-fA-F0-9]{40}\b/g, "[wallet-redacted]");
+  out = out.replace(/\bG[A-Z2-7]{55}\b/g, "[wallet-redacted]");
+  out = out.replace(/\bchat[_-]?id\s*[=:]\s*\S+/gi, "chat_id=[redacted]");
+  out = out.replace(/\bbot\d+:[A-Za-z0-9_-]+/gi, "[token-redacted]");
+  out = out.replace(/\b(Bearer|token|secret|api[_-]?key)\s*[=:]\s*\S+/gi, "$1=[redacted]");
+  out = out.replace(/\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+/gi, "/api/webhooks/[redacted]");
+
+  return out.length > 400 ? `${out.slice(0, 397)}…` : out;
+}

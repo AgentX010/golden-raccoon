@@ -1,5 +1,6 @@
 import type {
   AgentRunRecord,
+  AlertDelivery,
   RecommendationRecord,
   TransactionRecord,
   TransactionObservation,
@@ -13,6 +14,7 @@ import type {
 import { storageSchemaContract } from "@/server/storage/contract";
 import type { IStorageAdapter, AgentRunInsert, HealthProbeResult } from "./types";
 import type { RiskSnapshotRecord } from "@/server/snapshots/schema";
+import { alertDeliveryToRow, rowToAlertDelivery } from "./types";
 
 const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonAgentRuns?: AgentRunRecord[];
@@ -24,6 +26,7 @@ const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonX402PaymentReceipts?: X402PaymentReceipt[];
   __goldenRaccoonWatchlistEntries?: WatchlistEntry[];
   __goldenRaccoonRiskSnapshots?: RiskSnapshotRecord[];
+  __goldenRaccoonAdapterAlertDeliveries?: AlertDelivery[];
 };
 
 function getAgentRuns(): AgentRunRecord[] {
@@ -57,6 +60,9 @@ function getX402PaymentReceipts(): X402PaymentReceipt[] {
 function getRiskSnapshots(): RiskSnapshotRecord[] {
   memoryStore.__goldenRaccoonRiskSnapshots ??= [];
   return memoryStore.__goldenRaccoonRiskSnapshots;
+function getAlertDeliveries(): AlertDelivery[] {
+  memoryStore.__goldenRaccoonAdapterAlertDeliveries ??= [];
+  return memoryStore.__goldenRaccoonAdapterAlertDeliveries;
 }
 
 function normalizedWallet(walletAddress?: string): string | undefined {
@@ -219,6 +225,60 @@ export class MemoryStorageAdapter implements IStorageAdapter {
     if (!record) return null;
     record.revokedAt ??= revokedAt;
     return structuredClone(record);
+  // ─── Alert deliveries ────────────────────────────────────────────
+
+  async listAlertDeliveries(alertId?: string, walletAddress?: string): Promise<AlertDelivery[]> {
+    const nw = normalizedWallet(walletAddress);
+    return sortDescCreated(
+      getAlertDeliveries().filter(
+        (delivery) =>
+          (!alertId || delivery.alertId === alertId) &&
+          (!nw || delivery.walletAddress.toLowerCase() === nw),
+      ),
+    );
+  }
+
+  async getAlertDeliveryByIdempotencyKey(
+    walletAddress: string,
+    idempotencyKey: string,
+  ): Promise<AlertDelivery | null> {
+    const nw = walletAddress.toLowerCase();
+    return (
+      getAlertDeliveries().find(
+        (delivery) =>
+          delivery.walletAddress.toLowerCase() === nw && delivery.idempotencyKey === idempotencyKey,
+      ) ?? null
+    );
+  }
+
+  async createAlertDelivery(record: AlertDelivery): Promise<AlertDelivery> {
+    // Round-trip through the SQL row mapper so adapter consumers share the
+    // same column contract as schema.sql / Supabase.
+    const normalized = rowToAlertDelivery(alertDeliveryToRow(record));
+    if (normalized.idempotencyKey) {
+      const existing = await this.getAlertDeliveryByIdempotencyKey(
+        normalized.walletAddress,
+        normalized.idempotencyKey,
+      );
+      if (existing) return existing;
+    }
+    getAlertDeliveries().unshift(normalized);
+    return normalized;
+  }
+
+  async updateAlertDelivery(
+    id: string,
+    walletAddress: string,
+    patch: Partial<AlertDelivery>,
+  ): Promise<AlertDelivery | null> {
+    const nw = walletAddress.toLowerCase();
+    const store = getAlertDeliveries();
+    const index = store.findIndex(
+      (delivery) => delivery.id === id && delivery.walletAddress.toLowerCase() === nw,
+    );
+    if (index < 0) return null;
+    store[index] = rowToAlertDelivery(alertDeliveryToRow({ ...store[index], ...patch }));
+    return store[index];
   }
 
   // ─── Health & counts ─────────────────────────────────────────────
