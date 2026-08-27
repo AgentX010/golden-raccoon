@@ -353,6 +353,8 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     if (error) throw new StorageError("revokeRiskSnapshot", error);
     if (data) return rowToRiskSnapshot(data);
     return this.getRiskSnapshot(id);
+  }
+
   // ─── Alert deliveries ────────────────────────────────────────────
 
   async listAlertDeliveries(alertId?: string, walletAddress?: string): Promise<AlertDelivery[]> {

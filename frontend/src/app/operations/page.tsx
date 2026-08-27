@@ -3,12 +3,10 @@ import { AppShell } from "@/components/AppShell";
 import { knownLimitations, releaseReadinessChecks } from "@/server/operations/releaseReadiness";
 import { getFeatureFlagHealth } from "@/server/env/validation";
 import { OperationsSloPanel } from "@/components/OperationsSloPanel";
-
-export default function OperationsPage() {
-  const featureFlags = getFeatureFlagHealth();
 import { getConfiguredProviderHealth } from "@/server/observability/providerHealth";
 
 export default function OperationsPage() {
+  const featureFlags = getFeatureFlagHealth();
   const providerHealth = getConfiguredProviderHealth();
   return (
     <AppShell>

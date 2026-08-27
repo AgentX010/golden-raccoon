@@ -52,7 +52,3 @@ export function getPerformanceHealth() {
     heapTotalMb: Math.round(memory.heapTotal / 1024 / 1024),
   };
 }
-
-// Integrated with SLO requirements
-
-export function getPerformanceHealth() { return { status: "ok" }; }

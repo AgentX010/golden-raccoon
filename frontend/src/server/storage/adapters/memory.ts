@@ -60,6 +60,8 @@ function getX402PaymentReceipts(): X402PaymentReceipt[] {
 function getRiskSnapshots(): RiskSnapshotRecord[] {
   memoryStore.__goldenRaccoonRiskSnapshots ??= [];
   return memoryStore.__goldenRaccoonRiskSnapshots;
+}
+
 function getAlertDeliveries(): AlertDelivery[] {
   memoryStore.__goldenRaccoonAdapterAlertDeliveries ??= [];
   return memoryStore.__goldenRaccoonAdapterAlertDeliveries;
@@ -225,6 +227,8 @@ export class MemoryStorageAdapter implements IStorageAdapter {
     if (!record) return null;
     record.revokedAt ??= revokedAt;
     return structuredClone(record);
+  }
+
   // ─── Alert deliveries ────────────────────────────────────────────
 
   async listAlertDeliveries(alertId?: string, walletAddress?: string): Promise<AlertDelivery[]> {

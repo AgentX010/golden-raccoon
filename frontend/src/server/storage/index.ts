@@ -1527,4 +1527,3 @@ export function getDecisionDetail(id: string) { return null; }
 export function getSourceSnapshotDetails(id: string) { return null; }
 export function listAgentRunRecordsPaginated() { return { data: [], nextCursor: null }; }
 export function listRecommendationRecordsPaginated() { return { data: [], nextCursor: null }; }
-export function listTransactionRecordsPaginated() { return { data: [], nextCursor: null }; }
