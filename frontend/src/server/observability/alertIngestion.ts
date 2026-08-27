@@ -65,7 +65,7 @@ export async function ingestAgentRunAlerts(record: AgentRunRecord): Promise<Inge
     persistedObservationIds.push(persisted.id);
 
     for (const rule of rules) {
-      const evaluation = evaluateAndPersistObservation(persisted, rule);
+      const evaluation = await evaluateAndPersistObservation(persisted, rule);
       evaluations.push(evaluation);
     }
   }

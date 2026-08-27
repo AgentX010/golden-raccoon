@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type {
   AgentRunRecord,
+  AlertDelivery,
   RecommendationRecord,
   TransactionRecord,
   UserApprovalRecord,
@@ -13,6 +14,7 @@ import type {
 } from "@/server/types";
 import { storageSchemaContract } from "@/server/storage/contract";
 import type { IStorageAdapter, AgentRunInsert, HealthProbeResult } from "./types";
+import { alertDeliveryToRow, rowToAlertDelivery } from "./types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -310,6 +312,86 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
 
     if (error) throw new StorageError("createX402PaymentReceipt", error);
     return rowToX402Receipt(data);
+  }
+
+  // ─── Alert deliveries ────────────────────────────────────────────
+
+  async listAlertDeliveries(alertId?: string, walletAddress?: string): Promise<AlertDelivery[]> {
+    let query = this.client.from("alert_deliveries").select("*").order("created_at", { ascending: false });
+
+    if (alertId) query = query.eq("alert_id", alertId);
+    if (walletAddress) {
+      const s = isStellarIdentifier(walletAddress);
+      query = query.eq("wallet_address", preserveChainIdentity(walletAddress, s));
+    }
+
+    const { data, error } = await query;
+    if (error) throw new StorageError("listAlertDeliveries", error);
+    return (data ?? []).map((row) => rowToAlertDelivery(row as Record<string, unknown>));
+  }
+
+  async getAlertDeliveryByIdempotencyKey(
+    walletAddress: string,
+    idempotencyKey: string,
+  ): Promise<AlertDelivery | null> {
+    const s = isStellarIdentifier(walletAddress);
+    const { data, error } = await this.client
+      .from("alert_deliveries")
+      .select("*")
+      .eq("wallet_address", preserveChainIdentity(walletAddress, s))
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+
+    if (error) throw new StorageError("getAlertDeliveryByIdempotencyKey", error);
+    return data ? rowToAlertDelivery(data as Record<string, unknown>) : null;
+  }
+
+  async createAlertDelivery(record: AlertDelivery): Promise<AlertDelivery> {
+    if (record.idempotencyKey) {
+      const existing = await this.getAlertDeliveryByIdempotencyKey(
+        record.walletAddress,
+        record.idempotencyKey,
+      );
+      if (existing) return existing;
+    }
+
+    const row = alertDeliveryToRow(record);
+    const { data, error } = await this.client.from("alert_deliveries").insert(row).select().single();
+    if (error) throw new StorageError("createAlertDelivery", error);
+    return rowToAlertDelivery(data as Record<string, unknown>);
+  }
+
+  async updateAlertDelivery(
+    id: string,
+    walletAddress: string,
+    patch: Partial<AlertDelivery>,
+  ): Promise<AlertDelivery | null> {
+    const s = isStellarIdentifier(walletAddress);
+    const existing = await this.client
+      .from("alert_deliveries")
+      .select("*")
+      .eq("id", id)
+      .eq("wallet_address", preserveChainIdentity(walletAddress, s))
+      .maybeSingle();
+
+    if (existing.error) throw new StorageError("updateAlertDelivery", existing.error);
+    if (!existing.data) return null;
+
+    const merged = rowToAlertDelivery({
+      ...alertDeliveryToRow(rowToAlertDelivery(existing.data as Record<string, unknown>)),
+      ...alertDeliveryToRow({ ...rowToAlertDelivery(existing.data as Record<string, unknown>), ...patch }),
+    });
+    const row = alertDeliveryToRow(merged);
+    const { data, error } = await this.client
+      .from("alert_deliveries")
+      .update(row)
+      .eq("id", id)
+      .eq("wallet_address", preserveChainIdentity(walletAddress, s))
+      .select()
+      .maybeSingle();
+
+    if (error) throw new StorageError("updateAlertDelivery", error);
+    return data ? rowToAlertDelivery(data as Record<string, unknown>) : null;
   }
 
   // ─── Health & counts ─────────────────────────────────────────────

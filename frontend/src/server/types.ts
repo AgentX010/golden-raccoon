@@ -1221,10 +1221,17 @@ export type AlertDelivery = {
     afterValue: number;
     observationKey: string;
     evidenceLinks: string[];
+    walletHint?: string;
+    sourceLabels?: string[];
   };
   attemptCount: number;
   createdAt: string;
   sentAt?: string;
+  idempotencyKey?: string;
+  providerMessageId?: string;
+  nextRetryAt?: string;
+  lastAttemptAt?: string;
+  terminal?: boolean;
 };
 
 // ──────────────────────────────────────────────
