@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/server/api/errors";
 import { z } from "zod";
 import { isWalletAddressForChain, isStellarAccountAddress, canonicalizeAddress, getChainFamily } from "@/lib/chainIdentity";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
+import { resolveWalletSession } from "@/server/security/walletSession";
 import { submitTransaction } from "@/server/transactions/lifecycleManager";
 
 const bodySchema = z.object({
@@ -39,25 +41,30 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
+  }
+
+  const session = resolveWalletSession(request, { suppliedWallet: parsed.data.walletAddress });
+  if (session.response) {
+    return session.response;
   }
 
   const walletFamily = getChainFamily(parsed.data.network);
   if (parsed.data.chainFamily !== walletFamily) {
-    return NextResponse.json({ error: "chain_family_mismatch", detail: `Network ${parsed.data.network} belongs to ${walletFamily} but family ${parsed.data.chainFamily} was supplied.` }, { status: 400 });
+    return jsonError({ code: "chain_family_mismatch", message: `Network ${parsed.data.network} belongs to ${walletFamily} but family ${parsed.data.chainFamily} was supplied.`, status: 400 });
   }
 
   const walletValid = parsed.data.chainFamily === "stellar" ? isStellarAccountAddress(parsed.data.walletAddress) : isWalletAddressForChain(parsed.data.walletAddress, "evm");
   if (!walletValid) {
-    return NextResponse.json({ error: "invalid_wallet", detail: `Wallet address does not match ${parsed.data.chainFamily} format.` }, { status: 400 });
+    return jsonError({ code: "invalid_wallet", message: `Wallet address does not match ${parsed.data.chainFamily} format.`, status: 400 });
   }
 
   if (parsed.data.sourceAccount && parsed.data.chainFamily === "stellar" && !isStellarAccountAddress(parsed.data.sourceAccount)) {
-    return NextResponse.json({ error: "invalid_source", detail: "Stellar source account must be a valid G-address." }, { status: 400 });
+    return jsonError({ code: "invalid_source", message: "Stellar source account must be a valid G-address.", status: 400 });
   }
 
   if (parsed.data.sourceAccount && parsed.data.chainFamily === "evm" && canonicalizeAddress(parsed.data.sourceAccount, "evm") !== canonicalizeAddress(parsed.data.walletAddress, "evm")) {
-    return NextResponse.json({ error: "source_wallet_mismatch", detail: "EVM source account must equal the connected wallet." }, { status: 403 });
+    return jsonError({ code: "source_wallet_mismatch", message: "EVM source account must equal the connected wallet.", status: 403 });
   }
 
   try {
@@ -90,10 +97,6 @@ export async function POST(request: Request) {
       : code === "hash_chain_family_mismatch" || code === "network_chain_family_mismatch" ? 400
       : code === "transaction_not_found" ? 404
       : 502;
-    return NextResponse.json({
-      error: code,
-      detail: error instanceof Error ? error.message : "Could not submit transaction.",
-      ...(error && typeof error === "object" && "detail" in error ? { extra: (error as { detail?: unknown }).detail } : {}),
-    }, { status });
+    return jsonError({ code: code as any, message: error instanceof Error ? error.message : "Could not submit transaction.", status, legacy: (error && typeof error === "object" && "detail" in error ? { extra: (error as { detail?: unknown }).detail } : {}) });
   }
 }

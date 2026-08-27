@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/server/api/errors";
 import { z } from "zod";
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
   }
 
   const { chain, walletAddress, fromAsset, toAsset, fromIssuer, toIssuer, amount, slippageBps } = parsed.data;
@@ -56,12 +57,7 @@ export async function POST(request: Request) {
 
   if (!result.quote) {
     // No route available: recommendation-only mode, no executable payload
-    return NextResponse.json({
-      quote: null,
-      error: result.error ?? "No swap route available.",
-      unsupported: true,
-      detail: "This pair has no available route. Approval is disabled; only a recommendation can be shown.",
-    }, { status: 404 });
+    return jsonError({ code: "not_found" as any, message: result.error ?? "No swap route available.", status: 404, legacy: { quote: null, unsupported: true, detail: "This pair has no available route. Approval is disabled; only a recommendation can be shown.", } });
   }
 
   // ALWAYS return a fresh quote with current timestamp — never reuse stale data
