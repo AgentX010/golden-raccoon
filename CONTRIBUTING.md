@@ -35,9 +35,16 @@ RUSTC="$(rustup which rustc)" stellar contract build --manifest-path soroban/Car
 
 ## Installation and verification
 
-```sh
-npm install
-npm install --prefix frontend
+First, install the repository dependencies:
+
+```bash
+npm run bootstrap
+npm run doctor
+```
+
+See [Local Development](docs/LOCAL_DEVELOPMENT.md) for more details.
+
+```bash
 npm run quality:gate
 cargo test --manifest-path soroban/Cargo.toml
 RUSTC="$(rustup which rustc)" stellar contract build --manifest-path soroban/Cargo.toml

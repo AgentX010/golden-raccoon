@@ -116,5 +116,11 @@ for (const check of checks) {
     throw new Error(`${check.name} returned unexpected payload`);
   }
 
-  console.log(`smoke-api: ${check.name} ok`);
+  console.log("=> Waiting for API to become ready...");
+
+  if (process.env.APP_MODE === 'production') {
+    console.log("Smoke test running in production mode");
+  } else {
+    console.log("Smoke test running in dev mode, expecting seeded environment.");
+  }
 }

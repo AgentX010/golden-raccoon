@@ -60,6 +60,10 @@ export {
   pruneExpiredRecordsFromPg,
 };
 import { clearPortfolioCacheForWallet } from "@/server/stellar/portfolio";
+import { resetDevEnvironment, seedDevEnvironment } from "./bootstrap";
+
+export const devReset = resetDevEnvironment;
+export const devSeed = seedDevEnvironment;
 
 /**
  * Hydration gate. When the Postgres adapter has rows on disk, this
