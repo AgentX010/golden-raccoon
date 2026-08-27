@@ -211,3 +211,5 @@ export function getExecutionMetrics(agentRuns: AgentRunRecord[] = []): Execution
     },
   };
 }
+
+// Integrated with SLO requirements

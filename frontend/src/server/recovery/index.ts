@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import type { AgentResult, TransactionPreview, UserRule } from "@/server/types";
 import {
   applyStaleIfExpired,

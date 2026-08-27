@@ -35,4 +35,21 @@ if (triggeredAlerts.length > 0) {
   throw new Error(`monitor-production: alert thresholds triggered: ${triggeredAlerts.join(", ")}`);
 }
 
+let criticalBurn = false;
+if (body.slos) {
+  for (const slo of body.slos) {
+    if (slo.insufficientData) continue;
+    if (slo.burnRateShort > 10 || slo.burnRateLong > 10) {
+      console.error(`monitor-production: CRITICAL burn rate for ${slo.id}`);
+      criticalBurn = true;
+    } else if (slo.burnRateShort > 2 || slo.burnRateLong > 2) {
+      console.warn(`monitor-production: WARNING burn rate for ${slo.id}`);
+    }
+  }
+}
+
+if (criticalBurn) {
+  process.exit(1);
+}
+
 console.log("monitor-production: ok");

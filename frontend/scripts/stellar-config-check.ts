@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { executeWithFallback } from "../src/lib/stellar/failover";

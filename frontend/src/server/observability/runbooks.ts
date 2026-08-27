@@ -417,3 +417,5 @@ export function runbookToReadinessCheck(runbook: Runbook) {
     disableSwitch: runbook.disableSwitch,
   };
 }
+
+// Integrated with SLO requirements

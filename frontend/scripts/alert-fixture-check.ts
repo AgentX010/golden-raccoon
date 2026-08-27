@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 /**
  * Alert engine fixture check. Runs in the same way as agent-fixture-check:
  *

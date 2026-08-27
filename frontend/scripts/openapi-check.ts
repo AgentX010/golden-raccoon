@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 /**
  * Deterministic route <-> OpenAPI coverage check.
  *

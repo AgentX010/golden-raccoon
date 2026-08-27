@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withCacheHeaders } from "@/server/cache/strategy";

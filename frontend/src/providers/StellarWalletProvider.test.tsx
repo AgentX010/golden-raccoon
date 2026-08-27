@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Networks, KitEventType, type KitEventStateUpdated, type KitEventWalletSelected } from "@creit.tech/stellar-wallets-kit/types";

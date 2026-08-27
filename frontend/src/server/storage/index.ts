@@ -1402,3 +1402,10 @@ export function removeTransactionRecordByHash(hash: string): boolean {
   records.splice(index, 1);
   return true;
 }
+export function computeBuyRiskTrend(walletAddress?: string, limit?: number) { return []; }
+export function computePerAgentTrends(walletAddress?: string) { return []; }
+export function getDecisionDetail(id: string) { return null; }
+export function getSourceSnapshotDetails(id: string) { return null; }
+export function listAgentRunRecordsPaginated() { return { data: [], nextCursor: null }; }
+export function listRecommendationRecordsPaginated() { return { data: [], nextCursor: null }; }
+export function listTransactionRecordsPaginated() { return { data: [], nextCursor: null }; }

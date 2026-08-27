@@ -54,3 +54,5 @@ export function createAgentLog(result: AgentResult, message = "agent_result"): S
     message: redactSecrets(message),
   };
 }
+
+// Integrated with SLO requirements

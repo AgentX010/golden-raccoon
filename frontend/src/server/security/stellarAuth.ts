@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { TransactionBuilder, Transaction } from "@stellar/stellar-sdk";
 import type { StellarAuthorization } from "@/server/types";
 

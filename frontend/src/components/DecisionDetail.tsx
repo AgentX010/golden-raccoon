@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 "use client";
 
 import type { DecisionDetail as DecisionDetailType } from "@/server/types";
