@@ -3,8 +3,7 @@ import { getAgentReadiness, getEnvHealth } from "@/server/env/validation";
 import { getReleaseReadinessHealth } from "@/server/operations/releaseReadiness";
 import { getPortfolioProviderHealth } from "@/server/portfolio/getPortfolio";
 import { getStorageHealth, listAgentRunRecords } from "@/server/storage";
-import { getConfiguredProviderHealth } from "@/server/observability/providerHealth";
-import { getExecutionDisableFlags } from "@/server/observability/providerHealth";
+import { getConfiguredProviderHealth, getExecutionDisableFlags, getProviderCircuitHealth } from "@/server/observability/providerHealth";
 
 function getLastSuccessfulProviderCall() {
   const records = listAgentRunRecords();
@@ -36,5 +35,20 @@ export function getProductionHealth() {
     releaseReadiness: getReleaseReadinessHealth(),
     lastSuccessfulProviderCall: getLastSuccessfulProviderCall(),
     executionDisableFlags: getExecutionDisableFlags(),
+    providerResilience: {
+      circuits: getProviderCircuitHealth(),
+      boundedRetries: true,
+      crossNetworkFailover: false,
+    },
+  };
+}
+
+export function getPerformanceHealth() {
+  const memory = process.memoryUsage();
+  return {
+    status: memory.heapUsed / Math.max(memory.heapTotal, 1) > 0.9 ? "degraded" : "healthy",
+    uptimeSeconds: Math.round(process.uptime()),
+    heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
+    heapTotalMb: Math.round(memory.heapTotal / 1024 / 1024),
   };
 }

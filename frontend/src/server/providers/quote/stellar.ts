@@ -15,7 +15,7 @@ import { Asset, StrKey } from "@stellar/stellar-sdk";
 import { getStellarNetwork } from "@/lib/stellar/config";
 import { createStellarDataServer } from "@/server/stellar/client";
 import { parseStellarAssetInput, type StellarAssetIdentity } from "@/server/stellar/assetIdentity";
-import { runProviderAdapter } from "@/server/providers/adapter";
+import { ProviderRequestError, runProviderAdapter } from "@/server/providers/adapter";
 import {
   type QuoteProviderConfig,
   type QuoteRequest,
@@ -94,35 +94,30 @@ async function findClassicPath(
   const numericAmount = Number.parseFloat(amount);
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) return null;
 
-  try {
-    // Try direct pair first
-    const directResult = await server
-      .strictSendPaths(fromAsset, numericAmount.toFixed(7), [toAsset])
-      .call();
+  // Transport errors deliberately escape to the shared retry/circuit layer.
+  const directResult = await server
+    .strictSendPaths(fromAsset, numericAmount.toFixed(7), [toAsset])
+    .call();
 
-    if (directResult.records.length > 0) {
-      const best = directResult.records[0];
-      return {
-        path: best.path.map((p: Asset) => `${p.getCode()}:${p.getIssuer()}`),
-        rate: Number(best.destination_amount) / numericAmount,
-      };
-    }
-
-    // Try with XLM as intermediary
-    const intermediateResult = await server
-      .strictSendPaths(fromAsset, numericAmount.toFixed(7), [Asset.native(), toAsset])
-      .call();
-
-    if (intermediateResult.records.length === 0) return null;
-
-    const best = intermediateResult.records[0];
+  if (directResult.records.length > 0) {
+    const best = directResult.records[0];
     return {
       path: best.path.map((p: Asset) => `${p.getCode()}:${p.getIssuer()}`),
       rate: Number(best.destination_amount) / numericAmount,
     };
-  } catch {
-    return null;
   }
+
+  const intermediateResult = await server
+    .strictSendPaths(fromAsset, numericAmount.toFixed(7), [Asset.native(), toAsset])
+    .call();
+
+  if (intermediateResult.records.length === 0) return null;
+
+  const best = intermediateResult.records[0];
+  return {
+    path: best.path.map((p: Asset) => `${p.getCode()}:${p.getIssuer()}`),
+    rate: Number(best.destination_amount) / numericAmount,
+  };
 }
 
 function buildPathPaymentOp(
@@ -223,35 +218,25 @@ async function runStellarQuoteOperation(
 ): Promise<QuoteResult> {
   const network = getStellarNetwork(request.chain);
   if (!network) {
-    const err = new Error(`Unsupported Stellar network: ${request.chain}`);
-    (err as any).code = "unsupported_chain";
-    throw err;
+    throw new ProviderRequestError(`Unsupported Stellar network: ${request.chain}`, "invalid_request");
   }
 
   if (!StrKey.isValidEd25519PublicKey(request.walletAddress)) {
-    const err = new Error(`Invalid Stellar wallet address: ${request.walletAddress}`);
-    (err as any).code = "invalid_request";
-    throw err;
+    throw new ProviderRequestError(`Invalid Stellar wallet address: ${request.walletAddress}`, "invalid_request");
   }
 
   const fromIdentity = parseAssetIdentity(request.fromAsset, request.fromIssuer, request.chain);
   const toIdentity = parseAssetIdentity(request.toAsset, request.toIssuer, request.chain);
 
   if (!fromIdentity) {
-    const err = new Error(`Could not resolve source asset: ${request.fromAsset}`);
-    (err as any).code = "invalid_request";
-    throw err;
+    throw new ProviderRequestError(`Could not resolve source asset: ${request.fromAsset}`, "invalid_request");
   }
   if (!toIdentity) {
-    const err = new Error(`Could not resolve destination asset: ${request.toAsset}`);
-    (err as any).code = "invalid_request";
-    throw err;
+    throw new ProviderRequestError(`Could not resolve destination asset: ${request.toAsset}`, "invalid_request");
   }
 
   if (fromIdentity.type === "native" && toIdentity.type === "native") {
-    const err = new Error("Cannot swap XLM to XLM.");
-    (err as any).code = "no_route";
-    throw err;
+    throw new ProviderRequestError("Cannot swap XLM to XLM.", "invalid_request");
   }
 
   const now = new Date();
@@ -271,11 +256,10 @@ async function runStellarQuoteOperation(
     const pathResult = await findClassicPath(fromIdentity, toIdentity, request.amount, request.chain);
 
     if (!pathResult) {
-      const err = new Error(
+      throw new ProviderRequestError(
         `No swap path found from ${fromStr} to ${toStr} on ${network.id}. Try a different pair.`,
+        "invalid_request",
       );
-      (err as any).code = "no_route";
-      throw err;
     }
 
     const expectedOutput = numericAmount * pathResult.rate;
@@ -316,11 +300,10 @@ async function runStellarQuoteOperation(
   const sorobanOp = await buildSorobanSwapOp(fromIdentity, toIdentity, request.amount, request.walletAddress, request.chain);
 
   if (!sorobanOp) {
-    const err = new Error(
+    throw new ProviderRequestError(
       `Soroban swap route is not available from ${fromStr} to ${toStr}. Only classic asset path payments are supported in MVP.`,
+      "invalid_request",
     );
-    (err as any).code = "no_route";
-    throw err;
   }
 
   return {
@@ -365,6 +348,7 @@ export async function getStellarQuote(
   request: QuoteRequest,
   config: QuoteProviderConfig = defaultQuoteProviderConfig,
 ): Promise<QuoteResult> {
+  const network = getStellarNetwork(request.chain);
   const result = await runProviderAdapter(
     () => runStellarQuoteOperation(request),
     {
@@ -374,6 +358,9 @@ export async function getStellarQuote(
       timeoutMs: config.timeoutMs,
       retries: config.retries,
       backoffMs: config.backoffMs,
+      identity: network ? { family: "stellar", network: network.id, passphrase: network.networkPassphrase } : undefined,
+      expectedIdentity: network ? { family: "stellar", network: network.id, passphrase: network.networkPassphrase } : undefined,
+      validate: (value) => Boolean(value && typeof value === "object" && "expiresAt" in value && "providerMeta" in value),
     },
   );
 

@@ -35,6 +35,10 @@ const serverEnvKeys = [
   "STELLAR_PUBNET_RPC_FALLBACK_URLS",
   "STELLAR_TESTNET_RISK_REGISTRY_ID",
   "STELLAR_PUBNET_RISK_REGISTRY_ID",
+  "PROVIDER_CIRCUIT_FAILURE_THRESHOLD",
+  "PROVIDER_CIRCUIT_OPEN_MS",
+  "PROVIDER_MAX_RETRIES",
+  "PROVIDER_RETRY_BUDGET_MS",
 ] as const;
 
 const publicEnvKeys = [
@@ -62,6 +66,22 @@ function isX402Ready() {
   }
 
   return baseConfigReady && (!usesCdpFacilitator || Boolean(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET));
+}
+
+function boundedInteger(name: string, fallback: number, minimum: number, maximum: number) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= minimum && value <= maximum ? value : fallback;
+}
+
+export function getProviderResilienceConfig() {
+  return {
+    circuitFailureThreshold: boundedInteger("PROVIDER_CIRCUIT_FAILURE_THRESHOLD", 3, 1, 10),
+    circuitOpenMs: boundedInteger("PROVIDER_CIRCUIT_OPEN_MS", 30_000, 1_000, 300_000),
+    maxRetries: boundedInteger("PROVIDER_MAX_RETRIES", 2, 0, 3),
+    retryBudgetMs: boundedInteger("PROVIDER_RETRY_BUDGET_MS", 20_000, 1_000, 120_000),
+  };
 }
 
 export function getEnvHealth() {
@@ -108,6 +128,7 @@ export function getEnvHealth() {
       stellar: stellarReady,
     },
     stellarConfig,
+    providerResilience: getProviderResilienceConfig(),
     detail:
       configuredLiveSources.length > 0
         ? "At least one live data source is configured. Missing sources must stay transparent in UI."

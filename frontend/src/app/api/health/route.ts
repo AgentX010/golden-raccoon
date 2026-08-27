@@ -8,12 +8,12 @@ import { getPerformanceHealth, getProductionHealth } from "@/server/observabilit
 import { getAgentRunMetrics } from "@/server/observability/metrics";
 import { alertThresholds, evaluateAlertThresholds } from "@/server/observability/alerts";
 import { getAuditEventSummary } from "@/server/observability/executionAudit";
-import { getExecutionDisableFlags } from "@/server/observability/providerHealth";
+import { getExecutionDisableFlags, getProviderCircuitHealth } from "@/server/observability/providerHealth";
 import { runbookToReadinessCheck, listRunbooks } from "@/server/observability/runbooks";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const records = listAgentRunRecords();
   const metrics = getAgentRunMetrics(records);
   const executionMetrics = metrics.execution;
@@ -38,6 +38,7 @@ export function GET() {
       executionAudit: auditSummary,
       runbooks,
       disableFlags,
+      providerCircuits: getProviderCircuitHealth(),
       alerts: {
         thresholds: alertThresholds,
         status: evaluateAlertThresholds({

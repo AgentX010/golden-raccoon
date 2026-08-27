@@ -1,8 +1,10 @@
 import { AlertTriangle, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { knownLimitations, releaseReadinessChecks } from "@/server/operations/releaseReadiness";
+import { getConfiguredProviderHealth } from "@/server/observability/providerHealth";
 
 export default function OperationsPage() {
+  const providerHealth = getConfiguredProviderHealth();
   return (
     <AppShell>
       <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
@@ -50,6 +52,27 @@ export default function OperationsPage() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="mt-10 rounded-lg border border-white/10 bg-white/6 p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Provider resilience</h2>
+            <p className="mt-1 text-sm text-white/52">Circuit state and safe network-specific fallback readiness.</p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${providerHealth.overallStatus === "healthy" ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-300"}`}>
+            {providerHealth.overallStatus}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {[...providerHealth.evm, ...providerHealth.stellar].map((provider) => (
+            <article key={`${provider.family}:${provider.network}`} className="rounded-md bg-black/24 px-4 py-3">
+              <div className="flex items-center justify-between text-sm"><span className="font-medium text-white">{provider.family.toUpperCase()} · {provider.network}</span><span className="text-white/50">{provider.status}</span></div>
+              <p className="mt-2 text-xs leading-5 text-white/48">{provider.detail}</p>
+            </article>
+          ))}
+        </div>
+        {providerHealth.circuits.length > 0 && <p className="mt-4 text-xs text-white/45">Tracked circuits: {providerHealth.circuits.length}. Open and half-open providers fail over only inside the requested network.</p>}
       </section>
 
       <section className="mt-10 rounded-lg border border-white/10 bg-white/6 p-5">

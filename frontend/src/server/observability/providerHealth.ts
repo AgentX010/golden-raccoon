@@ -9,6 +9,9 @@
 import { createEvmPublicClient } from "@/server/transactions/adapters/evm";
 import { getStellarRpcHealth } from "@/server/stellar/client";
 import { recordAuditEvent, auditProviderHealthCheck, auditProviderDegraded } from "@/server/observability/executionAudit";
+import { sharedProviderCircuits, type CircuitState } from "@/server/providers/adapter";
+import { redactProviderUrl } from "@/lib/stellar/failover";
+import { redactSecrets } from "@/server/observability/logging";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -23,6 +26,8 @@ export type ProviderHealthCheck = {
   detail: string;
   checkedAt: string;
   error?: string;
+  score?: number;
+  circuitState?: CircuitState;
 };
 
 export type ProviderHealthSnapshot = {
@@ -30,7 +35,24 @@ export type ProviderHealthSnapshot = {
   stellar: ProviderHealthCheck[];
   checkedAt: string;
   overallStatus: HealthStatus;
+  circuits: ReturnType<typeof getProviderCircuitHealth>;
 };
+
+export function getProviderCircuitHealth() {
+  return sharedProviderCircuits.snapshots().map((circuit) => {
+    const latencyPenalty = Math.min(35, circuit.averageLatencyMs / 100);
+    const errorPenalty = circuit.errorRate * 55;
+    const statePenalty = circuit.state === "open" ? 40 : circuit.state === "half_open" ? 20 : 0;
+    return {
+      provider: redactSecrets(circuit.key),
+      state: circuit.state,
+      sampleCount: circuit.sampleCount,
+      errorRate: Number(circuit.errorRate.toFixed(3)),
+      averageLatencyMs: circuit.averageLatencyMs,
+      score: Math.max(0, Math.round(100 - latencyPenalty - errorPenalty - statePenalty)),
+    };
+  });
+}
 
 // ── Disable switches ───────────────────────────────────────────────
 
@@ -100,7 +122,7 @@ export async function checkEvmProviderHealth(params: {
     recordAuditEvent(auditProviderHealthCheck({
       correlationId: `health_evm_${network}`,
       provider: `evm_rpc_${network}`,
-      providerUrl: params.rpcUrl,
+      providerUrl: params.rpcUrl ? redactProviderUrl(params.rpcUrl) : undefined,
       chainFamily: "evm",
       network,
       healthy: true,
@@ -123,7 +145,7 @@ export async function checkEvmProviderHealth(params: {
     recordAuditEvent(auditProviderDegraded({
       correlationId: `health_evm_${network}`,
       provider: `evm_rpc_${network}`,
-      providerUrl: params.rpcUrl,
+      providerUrl: params.rpcUrl ? redactProviderUrl(params.rpcUrl) : undefined,
       chainFamily: "evm",
       network,
       reason: message,
@@ -136,7 +158,7 @@ export async function checkEvmProviderHealth(params: {
       status: "unavailable",
       latencyMs,
       detail: `EVM RPC is unavailable for ${network}.`,
-      error: message,
+      error: redactSecrets(message),
       checkedAt: new Date().toISOString(),
     };
   }
@@ -158,7 +180,7 @@ export async function checkStellarProviderHealth(params: {
     recordAuditEvent(auditProviderHealthCheck({
       correlationId: `health_stellar_${params.network}`,
       provider: "stellar_rpc",
-      providerUrl: health.providerUrl,
+      providerUrl: health.providerUrl ? redactProviderUrl(health.providerUrl) : undefined,
       chainFamily: "stellar",
       network: params.network,
       healthy: health.healthy,
@@ -195,7 +217,7 @@ export async function checkStellarProviderHealth(params: {
       status: "unavailable",
       latencyMs,
       detail: `Stellar RPC is unavailable for ${params.network}.`,
-      error: message,
+      error: redactSecrets(message),
       checkedAt: new Date().toISOString(),
     };
   }
@@ -228,6 +250,7 @@ export async function getProviderHealthSnapshot(options?: {
     stellar,
     checkedAt: new Date().toISOString(),
     overallStatus,
+    circuits: getProviderCircuitHealth(),
   };
 }
 
@@ -272,5 +295,6 @@ export function getConfiguredProviderHealth(): ProviderHealthSnapshot {
     stellar: [stellar],
     checkedAt: new Date().toISOString(),
     overallStatus: anyUnavailable ? "unavailable" : "healthy",
+    circuits: getProviderCircuitHealth(),
   };
 }
