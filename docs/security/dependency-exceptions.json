@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "exceptions": [],
+  "licensePolicy": {
+    "allowedIdentifiers": [
+      "0BSD",
+      "Apache-2.0",
+      "BlueOak-1.0.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "CC0-1.0",
+      "ISC",
+      "MIT",
+      "MPL-2.0",
+      "Python-2.0",
+      "Unicode-3.0",
+      "Unlicense"
+    ],
+    "deniedExpressions": ["NONE", "PROPRIETARY", "UNLICENSED"]
+  },
+  "allowedInstallScripts": [
+    "@coinbase/x402",
+    "@creit.tech/stellar-wallets-kit>@reown/appkit",
+    "@prisma/engines",
+    "@prisma>engines",
+    "@tailwindcss>oxide",
+    "better-sqlite3",
+    "bufferutil",
+    "es5-ext",
+    "esbuild",
+    "fsevents",
+    "keccak",
+    "libxmljs2",
+    "protobufjs",
+    "prisma",
+    "playwright>fsevents",
+    "rpc-websockets>utf-8-validate",
+    "secp256k1",
+    "sharp",
+    "unrs-resolver",
+    "utf-8-validate"
+  ]
+}

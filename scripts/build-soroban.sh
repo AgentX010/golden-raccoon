@@ -1,35 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Reproducible Soroban WASM build
-# Pinned: soroban-sdk =26.0.1, Rust nightly, opt-level=z, LTO
+# Reproducible Soroban WASM build. The lockfile is mandatory and the target is
+# Stellar's wasm32v1-none runtime target.
 
 echo "=== Soroban Reproducible Build ==="
 echo "Soroban SDK: =26.0.1 (pinned in Cargo.toml)"
 echo "Profile: release (opt-level=z, LTO, strip=symbols)"
 echo ""
 
-cd "$(dirname "$0")/../soroban"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR/soroban"
 
-cargo build --release --target wasm32-unknown-unknown -p golden-raccoon-policy
+cargo build --locked --release --target wasm32v1-none --workspace
 
-WASM="target/wasm32-unknown-unknown/release/golden_raccoon_policy.wasm"
-if [ ! -f "$WASM" ]; then
-  echo "ERROR: WASM file not found after build: $WASM" >&2
+WASM_ARTIFACTS=()
+while IFS= read -r artifact; do
+  WASM_ARTIFACTS+=("$artifact")
+done < <(find target/wasm32v1-none/release -maxdepth 1 -type f -name '*.wasm' | LC_ALL=C sort)
+if [ "${#WASM_ARTIFACTS[@]}" -eq 0 ]; then
+  echo "ERROR: no Soroban WASM files were generated" >&2
   exit 1
 fi
 
-if command -v sha256sum &> /dev/null; then
-  HASH=$(sha256sum "$WASM" | cut -d' ' -f1)
-else
-  HASH=$(python3 -c "import hashlib; print(hashlib.sha256(open('$WASM','rb').read()).hexdigest())")
-fi
-echo "=== Build Verification ==="
-echo "GoldenRaccoonPolicy WASM hash: $HASH"
-echo ""
-echo "To verify reproducibility:"
-echo "  1. git checkout <commit>"
-echo "  2. ./scripts/build-soroban.sh"
-echo "  3. Compare WASM hash with CI/reference build"
+node "$ROOT_DIR/scripts/verify-build-provenance.mjs" create soroban "${WASM_ARTIFACTS[@]}"
+node "$ROOT_DIR/scripts/verify-build-provenance.mjs" verify soroban
 
 echo "Build complete."

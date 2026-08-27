@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      root-runtime: { dependency-type: production }
+      root-tooling: { dependency-type: development }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    groups:
+      frontend-runtime: { dependency-type: production }
+      frontend-tooling: { dependency-type: development }
+  - package-ecosystem: npm
+    directory: /backend/contracts
+    schedule: { interval: weekly }
+    groups:
+      evm-runtime: { dependency-type: production }
+      evm-tooling: { dependency-type: development }
+  - package-ecosystem: cargo
+    directory: /soroban
+    schedule: { interval: weekly }
+    groups:
+      soroban-locked: { patterns: ["*"] }
