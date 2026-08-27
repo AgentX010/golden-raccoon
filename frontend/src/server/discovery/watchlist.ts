@@ -417,4 +417,4 @@ export function deriveAlertsFromScan(input: {
 }
 
 export type { ScanDiscoveryResultSummary as DiscoveryScanSummary };
-export type { DiscoveryAlert, DiscoveryAlertKind, WatchlistScanRun, AgentSource, AgentMissingData };
+export type { DiscoveryAlert, DiscoveryAlertKind, WatchlistScanRun, AgentSource, AgentMissingData };// Portability

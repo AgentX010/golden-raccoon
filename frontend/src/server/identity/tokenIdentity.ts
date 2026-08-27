@@ -155,3 +155,43 @@ export function resolveTokenIdentity(input: AgentInputIdentity): ResolvedTokenId
     officialLinkVerification: identityGraph.officialLinks,
   };
 }
+
+export function getWatchlistIdentityKey(entry: {
+  chain: string;
+  network?: string;
+  assetType?: string;
+  contractAddress?: string;
+  assetKey?: string;
+  issuer?: string;
+  symbol?: string;
+}): string {
+  const chain = normalizeChain(entry.chain) || "unknown-chain";
+  const network = entry.network?.trim().toLowerCase() || "mainnet";
+
+  if (chain === "stellar") {
+    if (entry.assetType === "native") {
+      return `stellar:${network}:native`;
+    }
+    if (entry.assetKey && entry.issuer) {
+      return `stellar:${network}:${entry.assetKey}:${entry.issuer}`;
+    }
+    if (entry.contractAddress) {
+      return `stellar:${network}:${normalizeAddress(entry.contractAddress) || entry.contractAddress}`;
+    }
+    if (entry.assetKey) {
+      return `stellar:${network}:${entry.assetKey}`;
+    }
+  }
+
+  // EVM
+  if (entry.contractAddress) {
+    return `${chain}:${network}:${normalizeAddress(entry.contractAddress) || entry.contractAddress}`;
+  }
+  
+  if (entry.assetKey) {
+    return `${chain}:${network}:${entry.assetKey}`;
+  }
+
+  const symbolStr = entry.symbol ? `:${entry.symbol.trim().toLowerCase()}` : "";
+  return `${chain}:${network}:unknown-asset${symbolStr}`;
+}

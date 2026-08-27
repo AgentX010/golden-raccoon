@@ -6,6 +6,7 @@ import type {
   UserRule,
   X402PaymentReceipt,
   StorageHealth,
+  WatchlistEntry,
   StorageCounts,
 } from "@/server/types";
 import { storageSchemaContract } from "@/server/storage/contract";
@@ -18,6 +19,8 @@ const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonApprovals?: UserApprovalRecord[];
   __goldenRaccoonUserRules?: UserRule[];
   __goldenRaccoonX402PaymentReceipts?: X402PaymentReceipt[];
+  __goldenRaccoonWatchlistEntries?: WatchlistEntry[];
+
 };
 
 function getAgentRuns(): AgentRunRecord[] {
@@ -191,6 +194,21 @@ export class MemoryStorageAdapter implements IStorageAdapter {
       userRules: getUserRules().length,
       x402PaymentReceipts: getX402PaymentReceipts().length,
     };
+  }
+
+  
+  async addWatchlistEntriesBulk(entries: WatchlistEntry[]): Promise<{ added: WatchlistEntry[] }> {
+    memoryStore.__goldenRaccoonWatchlistEntries ??= [];
+    const store = memoryStore.__goldenRaccoonWatchlistEntries;
+    const added: WatchlistEntry[] = [];
+    for (const entry of entries) {
+      const existing = store.find(e => e.walletAddress === entry.walletAddress && e.identityKey === entry.identityKey);
+      if (!existing) {
+        store.unshift(entry);
+        added.push(entry);
+      }
+    }
+    return { added };
   }
 
   async performHealthProbe(): Promise<HealthProbeResult> {

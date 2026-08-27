@@ -9,6 +9,7 @@ import type {
   UserApprovalRecord,
   UserRule,
   X402PaymentReceipt,
+  WatchlistEntry,
 } from "@/server/types";
 
 export type { StorageHealth, StorageCounts, StorageProvider };
@@ -90,4 +91,7 @@ export interface IStorageAdapter {
   getStorageHealth(): Promise<StorageHealth>;
   getStorageCounts(): Promise<StorageCounts>;
   performHealthProbe(): Promise<HealthProbeResult>;
+  // ─── Watchlist ───────────────────────────────────────────────────
+  addWatchlistEntriesBulk?(entries: WatchlistEntry[]): Promise<{ added: WatchlistEntry[] }>;
+
 }

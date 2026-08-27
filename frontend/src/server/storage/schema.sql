@@ -648,3 +648,5 @@ create table if not exists discovery_alerts (
 
 create index if not exists discovery_alerts_wallet_created_idx on discovery_alerts(wallet_address, created_at desc);
 create index if not exists discovery_alerts_entry_created_idx on discovery_alerts(entry_id, created_at desc);
+-- Watchlist portability (Issue #106)
+-- Bulk imports utilize the existing watchlist_entries schema.

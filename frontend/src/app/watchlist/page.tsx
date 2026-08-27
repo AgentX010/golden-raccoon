@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getScanNetwork } from "@/lib/scanNetworks";
 import { listWatchlistEntries, listWatchlistScanRuns, ensureStorageReady } from "@/server/storage";
-import { WatchlistAddForm, WatchlistRemoveButton, WatchlistRescanButton } from "@/components/WatchlistClient";
+import { WatchlistAddForm, WatchlistRemoveButton, WatchlistRescanButton, WatchlistExportButton, WatchlistImportForm } from "@/components/WatchlistClient";
 import type { DiscoveryClassification, RiskLevel, WatchlistEntry, WatchlistScanRun } from "@/server/types";
 
 export const dynamic = "force-dynamic";
@@ -167,6 +167,8 @@ export default async function WatchlistPage({
           Add an EVM token by contract address or a Stellar asset by CODE:ISSUER, contract ID, or native XLM.
         </p>
         <WatchlistAddForm wallet={wallet} />
+        <WatchlistImportForm wallet={wallet} />
+        <div className="mt-4"><WatchlistExportButton wallet={wallet} /></div>
       </section>
 
       {/* Watchlist entries */}
