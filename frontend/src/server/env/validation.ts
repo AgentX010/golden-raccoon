@@ -10,6 +10,12 @@ type EnvCheck = {
   detail: string;
 };
 
+export function assertDevelopmentMode() {
+  if (process.env.APP_MODE === "production") {
+    throw new Error("Safety check failed: Environment is configured for production. Cannot perform destructive actions.");
+  }
+}
+
 const serverEnvKeys = [
   "GOLDRUSH_API_KEY",
   "COVALENT_API_KEY",

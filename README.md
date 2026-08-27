@@ -78,6 +78,10 @@ backend/contracts/  (EVM Solidity contracts)
 └── GoldRaccoonVault.sol — Audit-log vault (prototype)
 ```
 
+### Local Development
+
+For information on how to bootstrap and run Golden Raccoon locally, please see [Local Development](docs/LOCAL_DEVELOPMENT.md).
+
 ### Agent pipeline
 
 ```
