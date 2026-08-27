@@ -3,7 +3,8 @@
 Golden Raccoon treats performance regressions like functional regressions. This
 document defines the Web Vitals and API latency budgets the frontend must stay
 inside of, how they are measured, and how a maintainer approves an intentional
-change to a budget.
+change to a budget. Note that these performance budgets tie closely into our
+Service Level Objectives (SLOs) defined in [SLO_ERROR_BUDGETS.md](./SLO_ERROR_BUDGETS.md).
 
 Machine-readable thresholds live in [`docs/performance/budgets.json`](./performance/budgets.json)
 and are enforced by `npm run test:perf` (see [`frontend/scripts/perf-budget-check.ts`](../frontend/scripts/perf-budget-check.ts)),

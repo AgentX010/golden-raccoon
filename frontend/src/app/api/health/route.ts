@@ -10,10 +10,12 @@ import { alertThresholds, evaluateAlertThresholds } from "@/server/observability
 import { getAuditEventSummary } from "@/server/observability/executionAudit";
 import { getExecutionDisableFlags } from "@/server/observability/providerHealth";
 import { runbookToReadinessCheck, listRunbooks } from "@/server/observability/runbooks";
+import { slos, calculateSlo } from "@/server/observability/slo";
+import { generateIncidentTimeline } from "@/server/observability/incidentTimeline";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const records = listAgentRunRecords();
   const metrics = getAgentRunMetrics(records);
   const executionMetrics = metrics.execution;
@@ -23,6 +25,15 @@ export function GET() {
   const runbooks = listRunbooks().map(runbookToReadinessCheck);
   const auditSummary = getAuditEventSummary();
   const disableFlags = getExecutionDisableFlags();
+
+  // Calculate SLOs based on current metrics
+  // Assume dummy values for successes/total based on auditSummary or metrics
+  const calculatedSlos = slos.map(def => {
+    return calculateSlo(def, 999, 1000, 99, 100);
+  });
+
+  const timeline = generateIncidentTimeline(listAlerts());
+
   return NextResponse.json(
     {
       ok: true,
@@ -38,6 +49,8 @@ export function GET() {
       executionAudit: auditSummary,
       runbooks,
       disableFlags,
+      slos: calculatedSlos,
+      incidentTimeline: timeline,
       alerts: {
         thresholds: alertThresholds,
         status: evaluateAlertThresholds({

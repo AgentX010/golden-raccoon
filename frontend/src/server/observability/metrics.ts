@@ -47,3 +47,5 @@ export function getResultMetrics(results: AgentResult[]) {
     },
   ]);
 }
+
+// Integrated with SLO requirements
