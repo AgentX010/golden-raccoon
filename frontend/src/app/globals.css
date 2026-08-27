@@ -35,7 +35,7 @@ body {
 }
 
 /* Accessibility: visible keyboard focus indicator using the brand gold. */
-:focus-visible, select:focus {
+select:focus, :focus-visible {
   outline: 3px solid #d9a441;
   outline-offset: 2px;
   border-radius: 4px;
