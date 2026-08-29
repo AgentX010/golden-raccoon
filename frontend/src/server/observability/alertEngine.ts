@@ -11,6 +11,7 @@ import {
   listAlertObservations,
   listAlertRules,
   listAlerts,
+  listNotificationPreferences,
   updateAlert,
 } from "@/server/storage";
 import { buildSanitizedAlertPayload } from "@/server/observability/alertSanitize";
@@ -20,6 +21,8 @@ import {
   findDeliveryByIdempotencyKey,
   persistDeliveryResult,
 } from "@/server/observability/alertDeliveries";
+import { defaultNotificationPreferences } from "@/server/observability/alerts/preferences/model";
+import { routeAlert } from "@/server/observability/alerts/preferences/routing";
 
 export type AlertEvaluation =
   | { outcome: "no_match"; reason: "rule_disabled" | "trigger_mismatch" | "key_mismatch" | "wallet_mismatch" | "cooldown" | "dedupe" | "below_threshold" | "no_history" | "incomplete_data"; observation: AlertObservation; rule: AlertRule; previousAlert?: Alert }
@@ -400,8 +403,38 @@ export async function evaluateAndPersistObservation(
 }
 
 /**
- * Fan-out delivery to every channel. Persists each delivery row, returning
- * the final state. UI helpers read from the storage layer.
+ * Resolves the effective routing preferences for an alert's wallet.
+ *
+ * Uses the first persisted preference record for the wallet when one exists,
+ * otherwise falls back to the permissive defaults (all channels enabled,
+ * minimum severity "low", quiet hours off). The chain/network scope recorded
+ * on the stored preference (or the default EVM scope) is carried into the
+ * routing decision.
+ */
+export function resolveRoutingPreferencesForWallet(
+  walletAddress: string,
+  scope?: { chainFamily?: "evm" | "stellar"; network?: string },
+) {
+  const stored = listNotificationPreferences(walletAddress)[0];
+  if (stored) return stored;
+
+  return defaultNotificationPreferences({
+    walletAddress,
+    chainFamily: scope?.chainFamily ?? "evm",
+    network: scope?.network ?? "legacy-evm",
+  });
+}
+
+/**
+ * Fan-out delivery to every channel the wallet's routing preferences allow.
+ * Persists each delivery row, returning the final state. UI helpers read
+ * from the storage layer.
+ *
+ * Routing rules (see alerts/preferences/routing.ts):
+ *  - channels below the wallet's minimum severity are not delivered
+ *  - categories the wallet opted out of are not delivered
+ *  - non-critical alerts during quiet hours are suppressed to the digest
+ *  - critical alerts always bypass quiet hours and digest batching
  *
  * Idempotent for `(alertId, channel, event)` via delivery idempotency keys.
  */
@@ -411,10 +444,20 @@ export async function fanOutDeliveries(
   event: "trigger" | "recover" = "trigger",
 ): Promise<AlertDelivery[]> {
   const sanitized = buildSanitizedAlertPayload(alert, observation.evidence, { walletAddressHint: alert.walletAddress });
-  const channels = ["in_app", "email", "telegram", "discord"] as const;
+  const preferences = resolveRoutingPreferencesForWallet(alert.walletAddress);
+  const plan = routeAlert(alert, preferences);
+
+  // When a plan lands in the digest stream (quiet-hours suppressed,
+  // non-critical), no channel is delivered immediately — the alert is queued
+  // for the scheduled summary. Nothing is persisted as a delivery row, which
+  // is precisely the "not delivered there" acceptance criterion.
+  if (plan.deliverNow.length === 0) {
+    return [];
+  }
+
   const out: AlertDelivery[] = [];
 
-  for (const channel of channels) {
+  for (const channel of plan.deliverNow) {
     const idempotencyKey = buildDeliveryIdempotencyKey(alert.id, channel, event);
     const existing = findDeliveryByIdempotencyKey(alert.id, alert.walletAddress, idempotencyKey);
     if (existing) {

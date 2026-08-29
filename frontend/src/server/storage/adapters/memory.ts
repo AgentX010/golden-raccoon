@@ -1,6 +1,7 @@
 import type {
   AgentRunRecord,
   AlertDelivery,
+  NotificationPreferences,
   RecommendationRecord,
   TransactionRecord,
   TransactionObservation,
@@ -27,6 +28,7 @@ const memoryStore = globalThis as typeof globalThis & {
   __goldenRaccoonWatchlistEntries?: WatchlistEntry[];
   __goldenRaccoonRiskSnapshots?: RiskSnapshotRecord[];
   __goldenRaccoonAdapterAlertDeliveries?: AlertDelivery[];
+  __goldenRaccoonAdapterNotificationPreferences?: NotificationPreferences[];
 };
 
 function getAgentRuns(): AgentRunRecord[] {
@@ -65,6 +67,11 @@ function getRiskSnapshots(): RiskSnapshotRecord[] {
 function getAlertDeliveries(): AlertDelivery[] {
   memoryStore.__goldenRaccoonAdapterAlertDeliveries ??= [];
   return memoryStore.__goldenRaccoonAdapterAlertDeliveries;
+}
+
+function getNotificationPreferences(): NotificationPreferences[] {
+  memoryStore.__goldenRaccoonAdapterNotificationPreferences ??= [];
+  return memoryStore.__goldenRaccoonAdapterNotificationPreferences;
 }
 
 function normalizedWallet(walletAddress?: string): string | undefined {
@@ -285,6 +292,56 @@ export class MemoryStorageAdapter implements IStorageAdapter {
     return store[index];
   }
 
+  // ─── Notification preferences ──────────────────────────────────
+
+  async getNotificationPreferences(scope: {
+    walletAddress: string;
+    chainFamily: "evm" | "stellar";
+    network: string;
+  }): Promise<NotificationPreferences | null> {
+    const nw = scope.walletAddress.toLowerCase();
+    const network = scope.network || "legacy-evm";
+    return (
+      getNotificationPreferences().find(
+        (pref) =>
+          pref.walletAddress.toLowerCase() === nw &&
+          pref.chainFamily === scope.chainFamily &&
+          pref.network === network,
+      ) ?? null
+    );
+  }
+
+  async upsertNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
+    const nw = prefs.walletAddress.toLowerCase();
+    const network = prefs.network || "legacy-evm";
+    const store = getNotificationPreferences();
+    const existingIndex = store.findIndex(
+      (existing) =>
+        existing.walletAddress.toLowerCase() === nw &&
+        existing.chainFamily === prefs.chainFamily &&
+        existing.network === network,
+    );
+
+    const record: NotificationPreferences = {
+      ...prefs,
+      id:
+        existingIndex >= 0
+          ? store[existingIndex].id
+          : `nfpref_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      walletAddress: nw,
+      network,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (existingIndex >= 0) {
+      store[existingIndex] = record;
+    } else {
+      store.unshift(record);
+    }
+
+    return record;
+  }
+
   // ─── Health & counts ─────────────────────────────────────────────
 
   async getStorageHealth(): Promise<StorageHealth> {
@@ -308,6 +365,7 @@ export class MemoryStorageAdapter implements IStorageAdapter {
       alertObservations: 0,
       alerts: 0,
       alertDeliveries: 0,
+      notificationPreferences: 0,
     };
   }
 

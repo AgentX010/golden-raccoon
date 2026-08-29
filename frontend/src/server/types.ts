@@ -1172,6 +1172,7 @@ export type StorageCounts = {
   alertObservations: number;
   alerts: number;
   alertDeliveries: number;
+  notificationPreferences: number;
 };
 
 export type AlertTriggerType =
@@ -1317,6 +1318,114 @@ export type AlertDelivery = {
   nextRetryAt?: string;
   lastAttemptAt?: string;
   terminal?: boolean;
+};
+
+// ──────────────────────────────────────────────
+// Notification preferences & delivery routing (issue #152)
+// ──────────────────────────────────────────────
+
+/**
+ * Coarse grouping for alert triggers. Preferences can opt out of an entire
+ * category (e.g. "every network + all notification channels") without
+ * listing individual triggers.
+ */
+export type AlertCategory =
+  | "critical_risk"
+  | "liquidity"
+  | "ownership"
+  | "security"
+  | "market"
+  | "portfolio"
+  | "stellar"
+  | "infrastructure";
+
+export type DigestCadence = "off" | "hourly" | "daily" | "weekly";
+
+/**
+ * Quiet-hours window evaluated in `timeZone`. `start`/`end` are 24h
+ * "HH:MM" strings in the configured time zone. A window that starts at
+ * 22:00 and ends at 07:00 crosses midnight and its start is later than its
+ * end — that is expected and handled by the quiet-hours evaluator.
+ */
+export type QuietHours = {
+  enabled: boolean;
+  start: string;
+  end: string;
+  timeZone: string;
+};
+
+/**
+ * Per-channel routing configuration. Minimum severity is inclusive, so a
+ * channel with `minimumSeverity: "high"` receives high and critical alerts.
+ * The optional per-category opt-in map defaults to "opted in" for categories
+ * that are absent (an empty/undefined map enables every category).
+ */
+export type ChannelPreference = {
+  enabled: boolean;
+  minimumSeverity: AlertSeverity;
+  categories?: Partial<Record<AlertCategory, boolean>>;
+};
+
+/**
+ * Typed, per-wallet notification preference model.
+ *
+ * GUARANTEE (documented in the model, enforced by the routing evaluator):
+ * critical-severity alerts ALWAYS bypass quiet hours and digest batching and
+ * are delivered immediately on their enabled channels. A wallet cannot
+ * suppress a critical alert through routing rules; only disabling the channel
+ * itself (or its category opt-out) can prevent critical delivery.
+ */
+export type NotificationPreferences = {
+  /** Stable storage id. Minted by the storage layer; omit when constructing defaults. */
+  id?: string;
+  walletAddress: string;
+  chainFamily: ChainFamily;
+  network: string;
+  channels: Record<AlertDeliveryChannel, ChannelPreference>;
+  quietHours: QuietHours;
+  digestCadence: DigestCadence;
+  dedupeWindowMinutes: number;
+  updatedAt: string;
+};
+
+/**
+ * Concrete per-alert delivery decision produced by the routing evaluator.
+ * `deliverNow` holds channels that receive the alert immediately; `toDigest`
+ * holds alerts suppressed into the digest stream (never critical).
+ */
+export type DeliveryPlan = {
+  alertId: string;
+  walletAddress: string;
+  chainFamily: ChainFamily;
+  network: string;
+  severity: AlertSeverity;
+  category: AlertCategory;
+  triggerType: AlertTriggerType;
+  deliverNow: AlertDeliveryChannel[];
+  toDigest: boolean;
+  suppressedReasons: Record<AlertDeliveryChannel, string>;
+};
+
+export type DigestEntry = {
+  alertId: string;
+  walletAddress: string;
+  chainFamily: ChainFamily;
+  network: string;
+  severity: AlertSeverity;
+  category: AlertCategory;
+  triggerType: AlertTriggerType;
+  message: string;
+  scheduledAt: string;
+  observedAt: string;
+};
+
+export type DigestSchedule = {
+  walletAddress: string;
+  chainFamily: ChainFamily;
+  network: string;
+  cadence: DigestCadence;
+  entries: DigestEntry[];
+  nextSendAt: string;
 };
 
 // ──────────────────────────────────────────────

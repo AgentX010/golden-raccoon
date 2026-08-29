@@ -680,6 +680,22 @@ create unique index if not exists alert_deliveries_idempotency_wallet_idx
   on alert_deliveries(wallet_address, idempotency_key)
   where idempotency_key is not null;
 
+-- Notification preferences & delivery routing (issue #152).
+-- One row per (wallet_address, chain_family, network) scope. The nested
+-- per-channel / quiet-hours / digest shape is stored as a JSONB blob so the
+-- typed model can evolve without a schema migration per field.
+create table if not exists notification_preferences (
+  id text primary key,
+  wallet_address text not null,
+  chain_family text not null default 'evm' check (chain_family in ('evm', 'stellar')),
+  network text not null default 'legacy-evm',
+  prefs jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists notification_preferences_wallet_idx
+  on notification_preferences(wallet_address, chain_family, network);
+
 -- Watchlist & discovery tables (upstream V3 discovery).
 create table if not exists watchlist_entries (
   id text primary key,
