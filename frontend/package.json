@@ -30,7 +30,9 @@
     "logging-check": "tsx --tsconfig tsconfig.json scripts/logging-check.ts",
     "test:pubnet-gate": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/pubnet-gate-check.ts",
     "test:wallet-capabilities": "tsx --tsconfig tsconfig.json scripts/wallet-capability-check.ts",
-    "test:responsive": "tsx --tsconfig tsconfig.json scripts/responsive-check.ts"
+    "test:responsive": "tsx --tsconfig tsconfig.json scripts/responsive-check.ts",
+    "test:erasure-residue": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/erasure-residue-check.ts",
+    "test:privacy": "NODE_OPTIONS='--require ./scripts/stub-server-only.cjs' tsx --tsconfig tsconfig.json scripts/wallet-privacy-lifecycle-check.ts"
   },
   "dependencies": {
     "@coinbase/x402": "^2.1.0",
