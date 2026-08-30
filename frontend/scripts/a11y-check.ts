@@ -26,6 +26,33 @@ function check(label: string, condition: boolean, guidance: string) {
   console.log(`[a11y-check] ok: ${label}`);
 }
 
+type Rgb = { r: number; g: number; b: number };
+function parseCssColor(input: string): Rgb | null {
+  const value = input.trim();
+  if (/^#[0-9a-f]{6}$/i.test(value)) {
+    return { r: Number.parseInt(value.slice(1, 3), 16), g: Number.parseInt(value.slice(3, 5), 16), b: Number.parseInt(value.slice(5, 7), 16) };
+  }
+  return null;
+}
+function relativeLuminance({ r, g, b }: Rgb) {
+  const transform = (channel: number) => { const n = channel / 255; return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * transform(r) + 0.7152 * transform(g) + 0.0722 * transform(b);
+}
+function contrastRatio(foreground: string, background: string) {
+  const fg = parseCssColor(foreground); const bg = parseCssColor(background);
+  assert.ok(fg && bg, `[a11y-check] FAILED: could not parse contrast pair ${foreground} on ${background}`);
+  const lighter = Math.max(relativeLuminance(fg), relativeLuminance(bg));
+  const darker = Math.min(relativeLuminance(fg), relativeLuminance(bg));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+function checkThemeContrast(themeName: string, pairs: Array<{ label: string; foreground: string; background: string; minimum: number }>) {
+  for (const pair of pairs) {
+    const ratio = contrastRatio(pair.foreground, pair.background);
+    check(`${themeName} contrast — ${pair.label} (${ratio.toFixed(2)}:1)`, ratio >= pair.minimum,
+      `Adjust ${themeName} tokens so ${pair.label} meets at least ${pair.minimum}:1 (currently ${ratio.toFixed(2)}:1).`);
+  }
+}
+
 function main() {
   const appShell = readRepoFile("src/components/AppShell.tsx");
   check(
@@ -146,6 +173,26 @@ function main() {
       `Add a "${heading}" section to docs/A11Y_AUDIT.md.`,
     );
   }
+
+
+  for (const file of ["src/theme/tokens.css","src/theme/themes.css","src/theme/ThemeProvider.tsx","src/theme/useTheme.ts","src/components/ThemeToggle.tsx"]) {
+    check(`Theme file exists: ${file}`, existsSync(repoPath(file)), `Create frontend/${file} for issue #137.`);
+  }
+  const layout = readRepoFile("src/app/layout.tsx");
+  check("layout.tsx applies theme before first paint", /beforeInteractive/.test(layout) && /setAttribute\("data-theme"/.test(layout), "Add beforeInteractive theme bootstrap script.");
+  check("layout.tsx wraps the app in ThemeProvider", /ThemeProvider/.test(layout), "Wrap children with ThemeProvider.");
+  check("AppShell exposes ThemeToggle", /ThemeToggle/.test(appShell), "Render ThemeToggle in AppShell.");
+  const themesCss = readRepoFile("src/theme/themes.css");
+  for (const mode of ["light","dark","high-contrast","system"]) {
+    check(`themes.css defines ${mode} palette`, mode=="dark" ? (/\[data-theme="dark"\]/.test(themesCss)||/:root:not\(\[data-theme\]\)/.test(themesCss)) : new RegExp(`\\[data-theme="${mode}"\\]`).test(themesCss), `Add ${mode} theme block.`);
+  }
+  check("RiskScoreCard uses theme risk tokens", /var\(--color-risk-low\)/.test(riskScoreCard) && /var\(--color-risk-high\)/.test(riskScoreCard), "Use CSS vars in RiskScoreCard gauge.");
+  check("TokenScanClient exposes non-color risk label", /riskLevelLabel/.test(readRepoFile("src/components/TokenScanClient.tsx")), "Add riskLevelLabel to TokenScanClient.");
+  const textPairs = (fg: string, bg: string, brand: string) => [{ label: "body text on canvas", foreground: fg, background: bg, minimum: 4.5 }, { label: "brand accent on canvas", foreground: brand, background: bg, minimum: 3 }];
+  checkThemeContrast("dark", textPairs("#f7f4ed","#050505","#d9a441"));
+  checkThemeContrast("light", textPairs("#12110f","#f4f1e8","#9a6b12"));
+  checkThemeContrast("high-contrast", textPairs("#ffffff","#000000","#ffcc00"));
+  checkThemeContrast("system-light", textPairs("#12110f","#f4f1e8","#9a6b12"));
 
   console.log("\na11y static checks passed.");
 }

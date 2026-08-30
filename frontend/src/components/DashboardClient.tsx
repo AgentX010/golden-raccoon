@@ -24,9 +24,9 @@ function getNetworkLabel(value?: string) {
 }
 
 function getScanCheckTone(status: NonNullable<TokenScanResult["analysisChecks"]>[number]["status"]) {
-  if (status === "pass") return "border-emerald-300/25 bg-emerald-300/8 text-emerald-200";
-  if (status === "warning") return "border-[#d9a441]/30 bg-[#d9a441]/8 text-[#f2c86d]";
-  if (status === "danger") return "border-red-300/30 bg-red-400/8 text-red-200";
+  if (status === "pass") return "risk-tone-low";
+  if (status === "warning") return "risk-tone-medium";
+  if (status === "danger") return "risk-tone-high";
   return "border-white/10 bg-white/[.035] text-white/38";
 }
 
@@ -73,12 +73,12 @@ function WalletRequiredState() {
       <div className="flex max-w-md flex-col items-center">
         <div className="relative flex h-28 w-28 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/15" />
-          <div className="absolute inset-3 animate-pulse rounded-full border border-[#d9a441]/30 bg-[#d9a441]/5" />
+          <div className="absolute inset-3 animate-pulse rounded-full border border-[#d9a441]/30 bg-brand/5" />
           <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-[#d9a441]/35 bg-black/60 shadow-[0_0_45px_rgba(217,164,65,.18)]">
-            <Wallet className="h-7 w-7 text-[#d9a441]" />
+            <Wallet className="h-7 w-7 text-brand" />
           </div>
         </div>
-        <div className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[#d9a441]">Wallet required</div>
+        <div className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-brand">Wallet required</div>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Connect your wallet</h1>
         <p className="mt-3 text-sm leading-6 text-white/48">Connect your wallet to view your portfolio and run personalized agent analysis.</p>
         <div className="mt-7">
@@ -96,7 +96,7 @@ function PortfolioLoadingState() {
         <div className="relative flex h-20 w-20 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/15" />
           <div className="absolute inset-2 animate-pulse rounded-full border border-[#d9a441]/30" />
-          <Loader2 className="h-7 w-7 animate-spin text-[#d9a441]" />
+          <Loader2 className="h-7 w-7 animate-spin text-brand" />
         </div>
         <div className="mt-5 text-lg font-semibold text-white">Loading your portfolio</div>
         <div className="mt-2 text-sm text-white/42">Reading connected wallet balances and risk signals.</div>
@@ -119,7 +119,7 @@ function getRiskiestHolding(holdings: TokenHolding[]) {
 
 function getStepTone(status: DashboardStepStatus) {
   if (status === "complete") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-200";
-  if (status === "running") return "border-[#d9a441]/35 bg-[#d9a441]/10 text-[#f2c86d]";
+  if (status === "running") return "border-[#d9a441]/35 bg-brand/10 text-brand-muted";
   if (status === "error") return "border-red-300/25 bg-red-300/10 text-red-200";
   if (status === "skipped") return "border-white/10 bg-white/5 text-white/38";
 
@@ -542,7 +542,7 @@ export function DashboardClient() {
               type="button"
               onClick={runDashboardAgents}
               disabled={isRunningAgents || actionsDisabled}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#d9a441] px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isRunningAgents ? "Running portfolio agents" : "Run portfolio agents"}
               {isRunningAgents ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -551,7 +551,7 @@ export function DashboardClient() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-[#d9a441]/20 bg-[#d9a441]/7 p-5">
+      <section className="rounded-lg border border-[#d9a441]/20 bg-brand/7 p-5">
         <div className="grid gap-4 lg:grid-cols-[.55fr_1.45fr] lg:items-center">
           <div>
             <div className="text-xl font-semibold">Scan token</div>
@@ -574,8 +574,8 @@ export function DashboardClient() {
               </button>
 
               {isNetworkOpen ? (
-                <div className="absolute bottom-14 left-0 z-50 flex max-h-96 w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#101012] shadow-2xl sm:w-80">
-                  <div className="sticky top-0 z-10 border-b border-white/10 bg-[#101012] p-2">
+                <div className="absolute bottom-14 left-0 z-50 flex max-h-96 w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-dropdown shadow-2xl sm:w-80">
+                  <div className="sticky top-0 z-10 border-b border-white/10 bg-dropdown p-2">
                     <div className="flex h-10 items-center gap-2 rounded-lg bg-white/6 px-3">
                       <Search className="h-4 w-4 shrink-0 text-white/34" />
                       <input
@@ -605,7 +605,7 @@ export function DashboardClient() {
                         </span>
                         {network.name}
                       </span>
-                      {network.id === selectedNetwork.id ? <Check className="h-4 w-4 text-[#d9a441]" /> : null}
+                      {network.id === selectedNetwork.id ? <Check className="h-4 w-4 text-brand" /> : null}
                     </button>
                   ))}
                   {filteredNetworks.length === 0 ? <div className="px-4 py-8 text-center text-sm text-white/34">No network found</div> : null}
@@ -623,7 +623,7 @@ export function DashboardClient() {
             <button
               type="submit"
               disabled={isScanning || !scanQuery.trim() || actionsDisabled}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#d9a441] px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d]"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d]"
             >
               {isScanning ? "Running token agents" : "Run token agents"}
               <ArrowRight className="h-4 w-4" />
@@ -644,7 +644,7 @@ export function DashboardClient() {
                     {scanResult ? getNetworkLabel(scanResult.chain) : selectedNetwork.name}
                   </span>
                   {scanResult && normalizeScanNetworkId(scanResult.chain) !== normalizeScanNetworkId(selectedNetwork.id) ? (
-                    <span className="rounded-full border border-[#d9a441]/30 bg-[#d9a441]/10 px-3 py-1 text-xs text-[#f2c86d]">Network auto-detected</span>
+                    <span className="rounded-full border border-[#d9a441]/30 bg-brand/10 px-3 py-1 text-xs text-brand-muted">Network auto-detected</span>
                   ) : null}
                 </div>
               </div>
@@ -659,7 +659,7 @@ export function DashboardClient() {
             </div>
 
             {scanNetworkMismatch ? (
-              <div className="mt-5 flex items-start gap-3 rounded-lg border border-[#d9a441]/30 bg-[#d9a441]/8 p-4 text-[#f2c86d]">
+              <div className="mt-5 flex items-start gap-3 rounded-lg border border-[#d9a441]/30 bg-brand/8 p-4 text-brand-muted">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
                   <div className="text-sm font-semibold">Contract network detected: {detectedScanNetworkLabel}</div>
@@ -675,7 +675,7 @@ export function DashboardClient() {
                 <div className="relative flex h-20 w-20 items-center justify-center">
                   <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/20" />
                   <div className="absolute inset-2 animate-pulse rounded-full border border-[#d9a441]/35" />
-                  <BrainCircuit className="h-8 w-8 text-[#d9a441]" />
+                  <BrainCircuit className="h-8 w-8 text-brand" />
                 </div>
                 <div className="mt-3 text-sm font-semibold text-white/74">
                   {scanResult ? scanChecks[Math.min(visibleScanChecks, scanChecks.length - 1)]?.label : scanCheckLabels[scanStageIndex]}
@@ -693,7 +693,7 @@ export function DashboardClient() {
                 return (
                   <div
                     key={label}
-                    className={`flex h-20 min-w-0 items-center justify-between gap-2 rounded-lg border px-3 transition-all duration-300 ${revealed ? getScanCheckTone(result.status) : active ? "border-[#d9a441]/45 bg-[#d9a441]/8 text-[#f2c86d] shadow-[0_0_20px_rgba(217,164,65,.12)]" : processed ? "border-white/12 bg-white/[.04] text-white/52" : "border-white/8 bg-black/20 text-white/25"}`}
+                    className={`flex h-20 min-w-0 items-center justify-between gap-2 rounded-lg border px-3 transition-all duration-300 ${revealed ? getScanCheckTone(result.status) : active ? "border-[#d9a441]/45 bg-brand/8 text-brand-muted shadow-[0_0_20px_rgba(217,164,65,.12)]" : processed ? "border-white/12 bg-white/[.04] text-white/52" : "border-white/8 bg-black/20 text-white/25"}`}
                   >
                     <div className="min-w-0">
                       <div className="truncate text-xs font-semibold">{label}</div>
@@ -720,7 +720,7 @@ export function DashboardClient() {
 
             {scanResult && scanRevealComplete ? (
               <div className="mt-7">
-                <div className={`rounded-xl border p-5 ${scanResult.overallRiskScore >= 75 ? "border-red-300/25 bg-red-400/8" : scanResult.overallRiskScore >= 50 ? "border-orange-300/25 bg-orange-400/8" : scanResult.overallRiskScore >= 25 ? "border-[#d9a441]/25 bg-[#d9a441]/8" : "border-emerald-300/25 bg-emerald-300/8"}`}>
+                <div className={`rounded-xl border p-5 ${scanResult.overallRiskScore >= 75 ? "border-red-300/25 bg-red-400/8" : scanResult.overallRiskScore >= 50 ? "border-orange-300/25 bg-orange-400/8" : scanResult.overallRiskScore >= 25 ? "border-[#d9a441]/25 bg-brand/8" : "border-emerald-300/25 bg-emerald-300/8"}`}>
                   <div className="flex items-end justify-between gap-5">
                     <div>
                       <div className="flex items-center gap-2 text-xs text-white/42">
@@ -776,7 +776,7 @@ export function DashboardClient() {
                       <div key={check.key} className="border-b border-white/8 pb-3 last:border-0">
                         <div className="flex items-center justify-between gap-3 text-sm font-semibold">
                           <span>{check.label}</span>
-                          <span className={check.status === "danger" ? "text-red-200" : "text-[#f2c86d]"}>{check.score}/100</span>
+                          <span className={check.status === "danger" ? "text-red-200" : "text-brand-muted"}>{check.score}/100</span>
                         </div>
                         <div className="mt-1 text-xs leading-5 text-white/48">{check.reason}</div>
                       </div>
@@ -803,10 +803,10 @@ export function DashboardClient() {
 
       {isDashboardRunOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-white/10 bg-[#101010] p-6 shadow-2xl">
+          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-white/10 bg-modal p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-sm uppercase tracking-[0.18em] text-[#d9a441]">Agent run</div>
+                <div className="text-sm uppercase tracking-[0.18em] text-brand">Agent run</div>
                 <h2 className="mt-2 text-2xl font-semibold">
                   {dashboardRunSummary?.final ? dashboardRunSummary.final.verdict : isRunningAgents ? "Agents running" : "Run result"}
                 </h2>
@@ -839,7 +839,7 @@ export function DashboardClient() {
             ) : null}
 
             {dashboardRunSummary?.riskyToken ? (
-              <div className="mt-5 rounded-2xl border border-[#d9a441]/20 bg-[#d9a441]/8 p-4">
+              <div className="mt-5 rounded-2xl border border-[#d9a441]/20 bg-brand/8 p-4">
                 <div className="text-sm text-white/42">Riskiest holding</div>
                 <div className="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                   <div>
@@ -987,10 +987,10 @@ export function DashboardClient() {
 
       {approvalFlowOpen && approvalPrepareData ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-white/10 bg-[#101010] p-6 shadow-2xl">
+          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-white/10 bg-modal p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-sm uppercase tracking-[0.18em] text-[#d9a441]">Sign transaction</div>
+                <div className="text-sm uppercase tracking-[0.18em] text-brand">Sign transaction</div>
                 <h2 className="mt-2 text-xl font-semibold">Wallet approval required</h2>
               </div>
               <button
