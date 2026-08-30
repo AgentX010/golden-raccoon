@@ -38,7 +38,8 @@
     "retention:purge": "node scripts/retention-purge.mjs",
     "retention:purge:dry": "DRY_RUN=true node scripts/retention-purge.mjs",
     "test:erasure-residue": "npm --prefix frontend run test:erasure-residue",
-    "test:privacy": "npm --prefix frontend run test:privacy"
+    "test:privacy": "npm --prefix frontend run test:privacy",
+    "test:e2e": "npm --prefix frontend run test:e2e"
   },
   "dependencies": {
     "next": "16.3.2",
