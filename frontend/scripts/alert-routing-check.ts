@@ -80,9 +80,12 @@ function defaultPrefs(): NotificationPreferences {
   return defaultNotificationPreferences({ walletAddress: WALLET, chainFamily: EVM, network: NETWORK });
 }
 
+// The quiet-hours assertions below are written against a UTC window, so the
+// instant must be built in UTC too. `new Date(y, m, d, h, ...)` interprets its
+// arguments in the host time zone, which made these cases pass only on a
+// UTC runner and fail anywhere with an offset.
 function makeDate(hour: number, minute = 0): Date {
-  const d = new Date(2026, 7, 29, hour, minute, 0, 0);
-  return d;
+  return new Date(Date.UTC(2026, 7, 29, hour, minute, 0, 0));
 }
 
 function testMinimumSeverity() {
