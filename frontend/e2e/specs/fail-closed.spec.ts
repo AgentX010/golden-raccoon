@@ -3,6 +3,7 @@ import {
   mockUnavailableProviderScanResult,
   mockUnpricedAssetScanResult,
 } from "../fixtures/mock-data";
+import { installMockEvmWallet, mockEvmWalletSession } from "../fixtures/mockEvmWallet";
 import { evmTokens } from "../fixtures/tokens";
 
 test.describe("Fail-closed paths", () => {
@@ -24,7 +25,8 @@ test.describe("Fail-closed paths", () => {
     await expect(page.getByText("Demo/mock data is present")).not.toBeVisible();
 
     await page.locator("summary:has-text('Execution details')").click();
-    await expect(page.getByText(/Provider unavailable/)).toBeVisible();
+    const executionDetails = page.locator("details").filter({ hasText: "Execution details" });
+    await expect(executionDetails.getByText(/Provider unavailable/)).toBeVisible();
   });
 
   test("unpriced asset blocks executable preview with quote unavailable", async ({ page }) => {
@@ -120,10 +122,12 @@ test.describe("Fail-closed paths", () => {
     expect(afterCount).toBe(beforeCount);
   });
 
-  test("portfolio provider unavailable shows fail-closed dashboard state", async ({ page, mockPortfolioApi, setupWalletConnected }) => {
+  test("portfolio provider unavailable shows fail-closed dashboard state", async ({ page, mockPortfolioApi }) => {
     await mockPortfolioApi({ returnError: true });
+    await installMockEvmWallet(page);
+    await mockEvmWalletSession(page);
     await page.goto("/dashboard");
-    await expect(page.getByText("Provider unavailable")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Provider unavailable" })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("No mock data used")).toBeVisible();
   });
 });

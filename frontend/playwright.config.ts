@@ -62,6 +62,7 @@ export default defineConfig({
         env: {
           NODE_ENV: "test",
           APP_MODE: "test",
+          NEXT_PUBLIC_APP_MODE: "test",
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "gold-raccoon-demo",
           NEXT_PUBLIC_APP_URL: baseURL,
           NEXT_PUBLIC_STELLAR_NETWORK: "stellar-testnet",
@@ -75,6 +76,7 @@ export default defineConfig({
         env: {
           NODE_ENV: "test",
           APP_MODE: "test",
+          NEXT_PUBLIC_APP_MODE: "test",
           NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "gold-raccoon-demo",
           NEXT_PUBLIC_APP_URL: baseURL,
           NEXT_PUBLIC_STELLAR_NETWORK: "stellar-testnet",

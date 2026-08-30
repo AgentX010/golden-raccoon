@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures/test";
+import { mockTokenScanResult } from "../fixtures/mock-data";
 import { evmTokens } from "../fixtures/tokens";
 
 test.describe("EVM scan journey", () => {
@@ -20,7 +21,7 @@ test.describe("EVM scan journey", () => {
     await page.locator('button:has-text("Run token agents")').first().click();
 
     await expect(page.locator("text=AI Risk Report")).toBeVisible({ timeout: 15000 });
-    await expect(page.locator("text=MEME")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "MEME" })).toBeVisible();
     await expect(page.locator("text=Buy risk")).toBeVisible();
     await expect(page.locator("text=Top reasons")).toBeVisible();
     await expect(page.locator("text=Why this is risky")).toBeVisible();
@@ -52,20 +53,7 @@ test.describe("EVM scan journey", () => {
   test("server scan responses never include a signed transaction", async ({ page }) => {
     const responses: string[] = [];
     await page.route("**/api/scan/token", async (route) => {
-      const body = JSON.stringify({
-        id: "e2e-leak-check",
-        symbol: "MEME",
-        chain: "base",
-        overallRiskScore: 50,
-        verdict: "caution",
-        summary: "Leak check",
-        reasons: [],
-        normalizedInput: { query: evmTokens.meme.address, chain: "base" },
-        riskBreakdown: [],
-        riskReport: { buyRisk: 50, confidence: 0.5, verdict: "caution", summary: "x", topReasons: [], agentCards: [] },
-        analysisChecks: [],
-        dataQuality: { mode: "live", connectedSources: 1, unavailableSources: 0, mockSources: 0, detail: "ok" },
-      });
+      const body = JSON.stringify(mockTokenScanResult({ id: "e2e-leak-check" }));
       responses.push(body);
       await route.fulfill({ status: 200, contentType: "application/json", body });
     });

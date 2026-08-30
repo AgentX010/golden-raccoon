@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures/test";
 import { installMockEvmWallet, mockEvmWalletSession } from "../fixtures/mockEvmWallet";
 import { installMockStellarWallet } from "../fixtures/mockStellarWallet";
-import { EVM_WALLET, STELLAR_WALLET } from "../fixtures/tokens";
+import { EVM_WALLET } from "../fixtures/tokens";
 
 test.describe("Connect wallet journey", () => {
   test("loads landing page with branding", async ({ page }) => {
@@ -19,7 +19,6 @@ test.describe("Connect wallet journey", () => {
     await page.locator('button:has-text("Connect Wallet")').first().click();
 
     await expect(page.locator("text=Select wallet")).toBeVisible();
-    await expect(page.locator("text=EVM wallet")).toBeVisible();
     await expect(page.locator("text=EVM wallet")).toBeVisible();
     await expect(page.locator("text=All Stellar wallets")).toBeVisible();
   });
@@ -44,7 +43,10 @@ test.describe("Stellar wallet connect", () => {
   test("restored Stellar address appears in wallet selector", async ({ page }) => {
     await installMockStellarWallet(page);
     await page.goto("/dashboard");
-    await page.locator('button:has-text("Connect Wallet")').first().click();
-    await expect(page.getByText(STELLAR_WALLET.slice(0, 6), { exact: false })).toBeVisible();
+    const walletButton = page.getByRole("banner").getByRole("button", { name: /GDXHOK/i });
+    await expect(walletButton).toBeVisible();
+    await walletButton.click();
+    await expect(page.getByText("Wallet session")).toBeVisible();
+    await expect(page.getByText("Display only — reconnect")).toBeVisible();
   });
 });

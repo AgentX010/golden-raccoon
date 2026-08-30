@@ -4,7 +4,7 @@ import {
   mockStellarNativeScanResult,
   mockStellarTokenScanResult,
 } from "../fixtures/mock-data";
-import { STELLAR_WALLET, stellarTokens } from "../fixtures/tokens";
+import { stellarTokens } from "../fixtures/tokens";
 import { installMockStellarWallet, mockStellarWalletSession } from "../fixtures/mockStellarWallet";
 
 test.describe("Stellar scan journey", () => {
@@ -26,17 +26,17 @@ test.describe("Stellar scan journey", () => {
 
   test("scans Soroban-style Stellar asset and displays risk report", async ({ page }) => {
     await runStellarScan(page, stellarTokens.contract.address, mockStellarTokenScanResult());
-    await expect(page.locator("text=RST")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "RST" })).toBeVisible();
   });
 
   test("scans native XLM separately from contract assets", async ({ page }) => {
     await runStellarScan(page, stellarTokens.nativeXlm.address, mockStellarNativeScanResult());
-    await expect(page.locator("text=XLM")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "XLM" })).toBeVisible();
   });
 
   test("scans classic CODE:ISSUER asset format", async ({ page }) => {
     await runStellarScan(page, stellarTokens.classicUsdc.address, mockStellarClassicAssetScanResult());
-    await expect(page.locator("text=USDC")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "USDC" })).toBeVisible();
   });
 
   test("shows Connect Stellar wallet when publish requires signer", async ({ page }) => {
@@ -48,7 +48,8 @@ test.describe("Stellar scan journey", () => {
     await installMockStellarWallet(page);
     await mockStellarWalletSession(page);
     await runStellarScan(page, stellarTokens.contract.address, mockStellarTokenScanResult());
-    await page.locator('button:has-text("Connect Wallet")').first().click();
-    await expect(page.getByText(STELLAR_WALLET.slice(0, 6), { exact: false })).toBeVisible();
+    await page.getByRole("button", { name: /GDXHOK/i }).click();
+    await expect(page.getByText("Wallet session")).toBeVisible();
+    await expect(page.getByText("Display only — reconnect")).toBeVisible();
   });
 });
