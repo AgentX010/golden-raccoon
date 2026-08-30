@@ -1,0 +1,63 @@
+:root {
+  /* Surfaces */
+  --color-bg: #050505;
+  --color-bg-elevated: #0b0b0b;
+  --color-panel: #0b0b0b;
+  --color-modal: #101010;
+  --color-dropdown: #101012;
+  --color-tooltip: #171719;
+
+  /* Text */
+  --color-fg: #f7f4ed;
+  --color-fg-muted: rgba(247, 244, 237, 0.62);
+  --color-fg-subtle: rgba(247, 244, 237, 0.38);
+  --color-fg-inverse: #050505;
+
+  /* Brand */
+  --color-brand: #d9a441;
+  --color-brand-hover: #f2c86d;
+  --color-brand-muted: #f2c86d;
+  --color-brand-subtle: rgba(217, 164, 65, 0.1);
+  --color-brand-border: rgba(217, 164, 65, 0.25);
+
+  /* Borders & glass */
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-bg: rgba(255, 255, 255, 0.055);
+  --color-glass-highlight: rgba(255, 255, 255, 0.08);
+  --color-glass-shadow: rgba(0, 0, 0, 0.28);
+  --color-overlay: rgba(0, 0, 0, 0.6);
+
+  /* Focus & selection */
+  --color-focus: #d9a441;
+  --color-focus-ring-offset: #050505;
+  --color-selection-bg: #d9a441;
+  --color-selection-fg: #050505;
+
+  /* Risk semantics (always paired with text labels/icons) */
+  --color-risk-low: #60d394;
+  --color-risk-medium: #f2c86d;
+  --color-risk-high: #ff6b6b;
+  --color-risk-low-bg: rgba(96, 211, 148, 0.1);
+  --color-risk-medium-bg: rgba(242, 200, 109, 0.1);
+  --color-risk-high-bg: rgba(255, 107, 107, 0.1);
+  --color-risk-low-border: rgba(110, 231, 183, 0.25);
+  --color-risk-medium-border: rgba(217, 164, 65, 0.25);
+  --color-risk-high-border: rgba(248, 113, 113, 0.25);
+
+  /* Status */
+  --color-success: #6ee7b7;
+  --color-warning: #f2c86d;
+  --color-danger: #fca5a5;
+
+  /* Header */
+  --color-header-bg: rgba(5, 5, 5, 0.78);
+  --color-nav-fg: rgba(255, 255, 255, 0.64);
+  --color-nav-hover-bg: rgba(255, 255, 255, 0.08);
+
+  /* Gauge marker */
+  --color-gauge-track: rgba(255, 255, 255, 0.08);
+  --color-gauge-marker-stem: #050505;
+  --color-gauge-marker-ring: #ffffff;
+}

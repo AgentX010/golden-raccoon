@@ -23,7 +23,7 @@
   --color-fg: #12110f;
   --color-fg-muted: rgba(18, 17, 15, 0.62);
   --color-fg-subtle: rgba(18, 17, 15, 0.42);
-  --color-fg-inverse: #f7f4ed;
+  --color-fg-inverse: #ffffff;
 
   --color-brand: #9a6b12;
   --color-brand-hover: #7a540e;
@@ -44,8 +44,8 @@
   --color-selection-bg: #d9a441;
   --color-selection-fg: #12110f;
 
-  --color-risk-low: #047857;
-  --color-risk-medium: #b45309;
+  --color-risk-low: #065f46;
+  --color-risk-medium: #78350f;
   --color-risk-high: #b91c1c;
   --color-risk-low-bg: rgba(4, 120, 87, 0.1);
   --color-risk-medium-bg: rgba(180, 83, 9, 0.1);
@@ -81,7 +81,7 @@
   --color-fg: #ffffff;
   --color-fg-muted: #ffffff;
   --color-fg-subtle: #ffffff;
-  --color-fg-inverse: #000000;
+  --color-fg-inverse: #ffffff;
 
   --color-brand: #ffcc00;
   --color-brand-hover: #ffe066;
@@ -140,7 +140,7 @@
     --color-fg: #12110f;
     --color-fg-muted: rgba(18, 17, 15, 0.62);
     --color-fg-subtle: rgba(18, 17, 15, 0.42);
-    --color-fg-inverse: #f7f4ed;
+    --color-fg-inverse: #ffffff;
 
     --color-brand: #9a6b12;
     --color-brand-hover: #7a540e;
@@ -161,8 +161,8 @@
     --color-selection-bg: #d9a441;
     --color-selection-fg: #12110f;
 
-    --color-risk-low: #047857;
-    --color-risk-medium: #b45309;
+    --color-risk-low: #065f46;
+    --color-risk-medium: #78350f;
     --color-risk-high: #b91c1c;
     --color-risk-low-bg: rgba(4, 120, 87, 0.1);
     --color-risk-medium-bg: rgba(180, 83, 9, 0.1);

@@ -27,7 +27,7 @@ function getScanCheckTone(status: NonNullable<TokenScanResult["analysisChecks"]>
   if (status === "pass") return "risk-tone-low";
   if (status === "warning") return "risk-tone-medium";
   if (status === "danger") return "risk-tone-high";
-  return "border-white/10 bg-white/[.035] text-white/38";
+  return "border-[var(--color-border)] bg-[var(--color-glass-bg)] text-subtle";
 }
 
 function getScanCheckMark(status: NonNullable<TokenScanResult["analysisChecks"]>[number]["status"]) {
@@ -69,18 +69,18 @@ function getInitialDashboardSteps(): DashboardRunStep[] {
 
 function WalletRequiredState() {
   return (
-    <section className="flex min-h-[430px] items-center justify-center rounded-[24px] border border-[#d9a441]/20 bg-[radial-gradient(circle_at_center,rgba(217,164,65,.10),transparent_62%)] px-6 py-16 text-center">
+    <section className="flex min-h-[430px] items-center justify-center rounded-[24px] border border-brand bg-brand-subtle px-6 py-16 text-center">
       <div className="flex max-w-md flex-col items-center">
         <div className="relative flex h-28 w-28 items-center justify-center">
-          <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/15" />
-          <div className="absolute inset-3 animate-pulse rounded-full border border-[#d9a441]/30 bg-brand/5" />
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-[#d9a441]/35 bg-black/60 shadow-[0_0_45px_rgba(217,164,65,.18)]">
+          <div className="absolute inset-0 animate-ping rounded-full border border-brand/15" />
+          <div className="absolute inset-3 animate-pulse rounded-full border border-brand/30 bg-brand-subtle" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-brand/35 bg-[var(--color-overlay)] shadow-[0_0_45px_color-mix(in_srgb,var(--color-brand)_18%,transparent)]">
             <Wallet className="h-7 w-7 text-brand" />
           </div>
         </div>
         <div className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-brand">Wallet required</div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Connect your wallet</h1>
-        <p className="mt-3 text-sm leading-6 text-white/48">Connect your wallet to view your portfolio and run personalized agent analysis.</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">Connect your wallet</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">Connect your wallet to view your portfolio and run personalized agent analysis.</p>
         <div className="mt-7">
           <WalletConnectButton />
         </div>
@@ -94,12 +94,12 @@ function PortfolioLoadingState() {
     <section className="flex min-h-[430px] items-center justify-center px-6 py-16 text-center">
       <div className="flex flex-col items-center">
         <div className="relative flex h-20 w-20 items-center justify-center">
-          <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/15" />
-          <div className="absolute inset-2 animate-pulse rounded-full border border-[#d9a441]/30" />
+          <div className="absolute inset-0 animate-ping rounded-full border border-brand/15" />
+          <div className="absolute inset-2 animate-pulse rounded-full border border-brand/30" />
           <Loader2 className="h-7 w-7 animate-spin text-brand" />
         </div>
-        <div className="mt-5 text-lg font-semibold text-white">Loading your portfolio</div>
-        <div className="mt-2 text-sm text-white/42">Reading connected wallet balances and risk signals.</div>
+        <div className="mt-5 text-lg font-semibold text-foreground">Loading your portfolio</div>
+        <div className="mt-2 text-sm text-subtle">Reading connected wallet balances and risk signals.</div>
       </div>
     </section>
   );
@@ -118,12 +118,11 @@ function getRiskiestHolding(holdings: TokenHolding[]) {
 }
 
 function getStepTone(status: DashboardStepStatus) {
-  if (status === "complete") return "border-emerald-300/25 bg-emerald-300/10 text-emerald-200";
-  if (status === "running") return "border-[#d9a441]/35 bg-brand/10 text-brand-muted";
-  if (status === "error") return "border-red-300/25 bg-red-300/10 text-red-200";
-  if (status === "skipped") return "border-white/10 bg-white/5 text-white/38";
-
-  return "border-white/10 bg-black/20 text-white/52";
+  if (status === "complete") return "risk-tone-low";
+  if (status === "running") return "risk-tone-medium";
+  if (status === "error") return "risk-tone-high";
+  if (status === "skipped") return "border-[var(--color-border)] bg-[var(--color-glass-bg)] text-subtle";
+  return "border-[var(--color-border)] bg-[var(--color-overlay)] text-muted";
 }
 
 function getPortfolioRiskDrivers(portfolio: PortfolioSnapshot) {
@@ -513,12 +512,12 @@ export function DashboardClient() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 border-y border-white/10 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-white/62">{riskDrivers.suggestedRebalance}</div>
+      <section className="flex flex-col gap-3 border-y border-[var(--color-border)] py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-muted">{riskDrivers.suggestedRebalance}</div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          <span><span className="text-white/38">Largest</span> {riskDrivers.largestHolding?.symbol ?? "N/A"} {riskDrivers.largestHolding?.allocationPercent.toFixed(1) ?? "0.0"}%</span>
-          <span><span className="text-white/38">Stable</span> {riskDrivers.stableReserve.toFixed(1)}%</span>
-          <span><span className="text-white/38">Exit risk</span> {riskDrivers.liquidityExitRisk.toFixed(1)}%</span>
+          <span><span className="text-subtle">Largest</span> {riskDrivers.largestHolding?.symbol ?? "N/A"} {riskDrivers.largestHolding?.allocationPercent.toFixed(1) ?? "0.0"}%</span>
+          <span><span className="text-subtle">Stable</span> {riskDrivers.stableReserve.toFixed(1)}%</span>
+          <span><span className="text-subtle">Exit risk</span> {riskDrivers.liquidityExitRisk.toFixed(1)}%</span>
         </div>
       </section>
 
@@ -526,14 +525,14 @@ export function DashboardClient() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-semibold">Portfolio decision</h2>
-            <div className="mt-1 text-sm text-white/46">{dashboardRunSummary?.final ? `${dashboardRunSummary.final.verdict} - ${dashboardRunSummary.final.recommendedAction.replaceAll("_", " ")}` : "Analyze the highest-risk holding."}</div>
+            <div className="mt-1 text-sm text-muted">{dashboardRunSummary?.final ? `${dashboardRunSummary.final.verdict} - ${dashboardRunSummary.final.recommendedAction.replaceAll("_", " ")}` : "Analyze the highest-risk holding."}</div>
           </div>
           <div className="flex gap-2">
             {dashboardAgentResults.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setIsDashboardRunOpen(true)}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-white/10 px-4 text-sm font-semibold text-white/70 transition hover:text-white"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[var(--color-border)] px-4 text-sm font-semibold text-muted transition hover:text-foreground"
               >
                 View result
               </button>
@@ -542,7 +541,7 @@ export function DashboardClient() {
               type="button"
               onClick={runDashboardAgents}
               disabled={isRunningAgents || actionsDisabled}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-[var(--color-fg-inverse)] transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isRunningAgents ? "Running portfolio agents" : "Run portfolio agents"}
               {isRunningAgents ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -551,7 +550,7 @@ export function DashboardClient() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-[#d9a441]/20 bg-brand/7 p-5">
+      <section className="rounded-lg border border-brand/20 bg-brand-subtle p-5">
         <div className="grid gap-4 lg:grid-cols-[.55fr_1.45fr] lg:items-center">
           <div>
             <div className="text-xl font-semibold">Scan token</div>
@@ -562,7 +561,7 @@ export function DashboardClient() {
                 type="button"
                 onClick={() => setIsNetworkOpen((isOpen) => !isOpen)}
                 disabled={actionsDisabled}
-                className="flex h-12 w-full items-center justify-between gap-3 rounded-full border border-[#d9a441]/35 bg-black/20 px-4 text-sm text-white/76 outline-none transition hover:border-[#d9a441]/60"
+                className="flex h-12 w-full items-center justify-between gap-3 rounded-full border border-brand/35 bg-[var(--color-glass-bg)] px-4 text-sm text-muted outline-none transition hover:border-brand/60"
               >
                 <span className="flex items-center gap-3">
                   <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${selectedNetwork.color}`}>
@@ -570,20 +569,20 @@ export function DashboardClient() {
                   </span>
                   {selectedNetwork.name}
                 </span>
-                <ChevronDown className={isNetworkOpen ? "h-4 w-4 rotate-180 text-white/48 transition" : "h-4 w-4 text-white/48 transition"} />
+                <ChevronDown className={isNetworkOpen ? "h-4 w-4 rotate-180 text-muted transition" : "h-4 w-4 text-muted transition"} />
               </button>
 
               {isNetworkOpen ? (
-                <div className="absolute bottom-14 left-0 z-50 flex max-h-96 w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-dropdown shadow-2xl sm:w-80">
-                  <div className="sticky top-0 z-10 border-b border-white/10 bg-dropdown p-2">
-                    <div className="flex h-10 items-center gap-2 rounded-lg bg-white/6 px-3">
-                      <Search className="h-4 w-4 shrink-0 text-white/34" />
+                <div className="absolute bottom-14 left-0 z-50 flex max-h-96 w-full flex-col overflow-hidden rounded-xl border border-[var(--color-border)] bg-dropdown shadow-2xl sm:w-80">
+                  <div className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-dropdown p-2">
+                    <div className="flex h-10 items-center gap-2 rounded-lg bg-[var(--color-glass-bg)] px-3">
+                      <Search className="h-4 w-4 shrink-0 text-subtle" />
                       <input
                         autoFocus
                         value={networkSearch}
                         onChange={(event) => setNetworkSearch(event.target.value)}
                         placeholder="Find network"
-                        className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/28"
+                        className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-subtle"
                       />
                     </div>
                   </div>
@@ -597,7 +596,7 @@ export function DashboardClient() {
                         setIsNetworkOpen(false);
                         setNetworkSearch("");
                       }}
-                      className="flex h-12 w-full items-center justify-between px-4 text-left text-sm text-white/78 transition hover:bg-white/7"
+                      className="flex h-12 w-full items-center justify-between px-4 text-left text-sm text-muted transition hover:bg-[var(--color-glass-bg)]"
                     >
                       <span className="flex items-center gap-3">
                         <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${network.color}`}>
@@ -608,7 +607,7 @@ export function DashboardClient() {
                       {network.id === selectedNetwork.id ? <Check className="h-4 w-4 text-brand" /> : null}
                     </button>
                   ))}
-                  {filteredNetworks.length === 0 ? <div className="px-4 py-8 text-center text-sm text-white/34">No network found</div> : null}
+                  {filteredNetworks.length === 0 ? <div className="px-4 py-8 text-center text-sm text-subtle">No network found</div> : null}
                   </div>
                 </div>
               ) : null}
@@ -618,12 +617,12 @@ export function DashboardClient() {
               value={scanQuery}
               onChange={(event) => setScanQuery(event.target.value)}
               placeholder="Contract address"
-              className="h-12 min-w-0 flex-1 rounded-full border border-white/10 bg-black/20 px-5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#d9a441]/60"
+              className="h-12 min-w-0 flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-glass-bg)] px-5 text-sm text-foreground outline-none transition placeholder:text-subtle focus:border-brand/60"
             />
             <button
               type="submit"
               disabled={isScanning || !scanQuery.trim() || actionsDisabled}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d]"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-[var(--color-fg-inverse)] transition hover:bg-brand-hover"
             >
               {isScanning ? "Running token agents" : "Run token agents"}
               <ArrowRight className="h-4 w-4" />
@@ -633,25 +632,25 @@ export function DashboardClient() {
       </section>
 
       {isScanModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-5 backdrop-blur-md">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0b0b0c] p-5 shadow-2xl sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overlay-backdrop px-4 py-5 backdrop-blur-md">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-panel p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs text-white/38">Token scan</div>
+                <div className="text-xs text-subtle">Token scan</div>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <h2 className="text-2xl font-semibold">{scanResult?.symbol ?? "Analyzing"}</h2>
-                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-white/52">
+                  <span className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs text-muted">
                     {scanResult ? getNetworkLabel(scanResult.chain) : selectedNetwork.name}
                   </span>
                   {scanResult && normalizeScanNetworkId(scanResult.chain) !== normalizeScanNetworkId(selectedNetwork.id) ? (
-                    <span className="rounded-full border border-[#d9a441]/30 bg-brand/10 px-3 py-1 text-xs text-brand-muted">Network auto-detected</span>
+                    <span className="rounded-full border border-brand/30 bg-brand-subtle px-3 py-1 text-xs text-brand-muted">Network auto-detected</span>
                   ) : null}
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsScanModalOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/42 transition hover:bg-white/8 hover:text-white"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-subtle transition hover:bg-[var(--color-nav-hover-bg)] hover:text-foreground"
                 aria-label="Close token scan"
               >
                 <X className="h-4 w-4" />
@@ -659,11 +658,11 @@ export function DashboardClient() {
             </div>
 
             {scanNetworkMismatch ? (
-              <div className="mt-5 flex items-start gap-3 rounded-lg border border-[#d9a441]/30 bg-brand/8 p-4 text-brand-muted">
+              <div className="mt-5 flex items-start gap-3 rounded-lg border border-brand/30 bg-brand-subtle p-4 text-brand-muted">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
                   <div className="text-sm font-semibold">Contract network detected: {detectedScanNetworkLabel}</div>
-                  <div className="mt-1 text-xs leading-5 text-white/52">
+                  <div className="mt-1 text-xs leading-5 text-muted">
                     You selected {selectedNetwork.name}, but this contract was found on {detectedScanNetworkLabel}. The scan automatically used the detected network.
                   </div>
                 </div>
@@ -673,11 +672,11 @@ export function DashboardClient() {
             {!scanRevealComplete && !scanError ? (
               <div className="mt-7 flex flex-col items-center text-center">
                 <div className="relative flex h-20 w-20 items-center justify-center">
-                  <div className="absolute inset-0 animate-ping rounded-full border border-[#d9a441]/20" />
-                  <div className="absolute inset-2 animate-pulse rounded-full border border-[#d9a441]/35" />
+                  <div className="absolute inset-0 animate-ping rounded-full border border-brand/20" />
+                  <div className="absolute inset-2 animate-pulse rounded-full border border-brand/35" />
                   <BrainCircuit className="h-8 w-8 text-brand" />
                 </div>
-                <div className="mt-3 text-sm font-semibold text-white/74">
+                <div className="mt-3 text-sm font-semibold text-muted">
                   {scanResult ? scanChecks[Math.min(visibleScanChecks, scanChecks.length - 1)]?.label : scanCheckLabels[scanStageIndex]}
                 </div>
               </div>
@@ -693,7 +692,7 @@ export function DashboardClient() {
                 return (
                   <div
                     key={label}
-                    className={`flex h-20 min-w-0 items-center justify-between gap-2 rounded-lg border px-3 transition-all duration-300 ${revealed ? getScanCheckTone(result.status) : active ? "border-[#d9a441]/45 bg-brand/8 text-brand-muted shadow-[0_0_20px_rgba(217,164,65,.12)]" : processed ? "border-white/12 bg-white/[.04] text-white/52" : "border-white/8 bg-black/20 text-white/25"}`}
+                    className={`flex h-20 min-w-0 items-center justify-between gap-2 rounded-lg border px-3 transition-all duration-300 ${revealed ? getScanCheckTone(result.status) : active ? "border-brand/45 bg-brand-subtle text-brand-muted shadow-[0_0_20px_color-mix(in_srgb,var(--color-brand)_12%,transparent)]" : processed ? "border-[var(--color-border-strong)] bg-white/[.04] text-muted" : "border-[var(--color-border)] bg-[var(--color-glass-bg)] text-subtle"}`}
                   >
                     <div className="min-w-0">
                       <div className="truncate text-xs font-semibold">{label}</div>
@@ -706,7 +705,7 @@ export function DashboardClient() {
                     >
                       {active ? <Loader2 className="h-4 w-4 animate-spin" /> : revealed ? getScanCheckMark(result.status) : processed ? <Check className="h-4 w-4" /> : "·"}
                       {revealed ? (
-                        <div role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 hidden w-52 rounded-lg border border-white/12 bg-[#171719] px-3 py-2 text-left text-[11px] font-normal leading-4 text-white/72 shadow-2xl group-hover:block group-focus:block">
+                        <div role="tooltip" className="pointer-events-none absolute bottom-full right-0 z-30 mb-2 hidden w-52 rounded-lg border border-[var(--color-border-strong)] bg-tooltip px-3 py-2 text-left text-[11px] font-normal leading-4 text-muted shadow-2xl group-hover:block group-focus:block">
                           {result.reason}
                         </div>
                       ) : null}
@@ -720,15 +719,15 @@ export function DashboardClient() {
 
             {scanResult && scanRevealComplete ? (
               <div className="mt-7">
-                <div className={`rounded-xl border p-5 ${scanResult.overallRiskScore >= 75 ? "border-red-300/25 bg-red-400/8" : scanResult.overallRiskScore >= 50 ? "border-orange-300/25 bg-orange-400/8" : scanResult.overallRiskScore >= 25 ? "border-[#d9a441]/25 bg-brand/8" : "border-emerald-300/25 bg-emerald-300/8"}`}>
+                <div className={`rounded-xl border p-5 ${scanResult.overallRiskScore >= 75 ? "risk-tone-high" : scanResult.overallRiskScore >= 50 ? "risk-tone-medium" : scanResult.overallRiskScore >= 25 ? "border-brand/25 bg-brand-subtle" : "border-emerald-300/25 bg-emerald-300/8"}`}>
                   <div className="flex items-end justify-between gap-5">
                     <div>
-                      <div className="flex items-center gap-2 text-xs text-white/42">
+                      <div className="flex items-center gap-2 text-xs text-subtle">
                         Verdict
                         <button
                           type="button"
                           onClick={() => setIsScoreReasonOpen(true)}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-white/45 transition hover:bg-white/8 hover:text-white"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-subtle transition hover:bg-[var(--color-nav-hover-bg)] hover:text-foreground"
                           aria-label="Why this score?"
                           title="Why this score?"
                         >
@@ -739,7 +738,7 @@ export function DashboardClient() {
                     </div>
                     <div className="text-right">
                       <div className="text-4xl font-semibold">{scanResult.overallRiskScore}</div>
-                      <div className="text-xs text-white/42">risk / 100</div>
+                      <div className="text-xs text-subtle">risk / 100</div>
                     </div>
                   </div>
                   <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
@@ -759,33 +758,33 @@ export function DashboardClient() {
             ) : null}
 
             {isScoreReasonOpen && scanResult && scanRevealComplete ? (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm" onClick={() => setIsScoreReasonOpen(false)}>
-                <div className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl border border-white/12 bg-[#111113] p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div className="fixed inset-0 z-[60] flex items-center justify-center overlay-backdrop px-4 backdrop-blur-sm" onClick={() => setIsScoreReasonOpen(false)}>
+                <div className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-xl border border-[var(--color-border-strong)] bg-modal p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs text-white/40">Why this score?</div>
+                      <div className="text-xs text-subtle">Why this score?</div>
                       <div className="mt-1 text-2xl font-semibold">{scanResult.overallRiskScore}/100</div>
                     </div>
-                    <button type="button" onClick={() => setIsScoreReasonOpen(false)} className="touch-target rounded-full text-white/42 transition hover:bg-white/8 hover:text-white" aria-label="Close score details">
+                    <button type="button" onClick={() => setIsScoreReasonOpen(false)} className="touch-target rounded-full text-subtle transition hover:bg-[var(--color-nav-hover-bg)] hover:text-foreground" aria-label="Close score details">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   <div className="mt-5 space-y-2">
                     {scoreReasons.map((check) => (
-                      <div key={check.key} className="border-b border-white/8 pb-3 last:border-0">
+                      <div key={check.key} className="border-b border-[var(--color-border)] pb-3 last:border-0">
                         <div className="flex items-center justify-between gap-3 text-sm font-semibold">
                           <span>{check.label}</span>
-                          <span className={check.status === "danger" ? "text-red-200" : "text-brand-muted"}>{check.score}/100</span>
+                          <span className={check.status === "danger" ? "text-[var(--color-risk-high)]" : "text-brand-muted"}>{check.score}/100</span>
                         </div>
-                        <div className="mt-1 text-xs leading-5 text-white/48">{check.reason}</div>
+                        <div className="mt-1 text-xs leading-5 text-muted">{check.reason}</div>
                       </div>
                     ))}
-                    {scoreReasons.length === 0 ? <div className="text-sm text-white/48">No elevated contract branch was found.</div> : null}
+                    {scoreReasons.length === 0 ? <div className="text-sm text-muted">No elevated contract branch was found.</div> : null}
                   </div>
 
                   {cleanChecks.length > 0 ? (
-                    <div className="mt-4 border-t border-white/10 pt-4">
+                    <div className="mt-4 border-t border-[var(--color-border)] pt-4">
                       <div className="flex flex-wrap gap-2">
                         {cleanChecks.map((check) => (
                           <span key={check.key} className="rounded-full border border-emerald-300/18 bg-emerald-300/7 px-2.5 py-1 text-[11px] text-emerald-200/75">{check.label} +</span>
@@ -802,8 +801,8 @@ export function DashboardClient() {
       ) : null}
 
       {isDashboardRunOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-white/10 bg-modal p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overlay-backdrop px-5 backdrop-blur-sm">
+          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-[var(--color-border)] bg-modal p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm uppercase tracking-[0.18em] text-brand">Agent run</div>
@@ -814,7 +813,7 @@ export function DashboardClient() {
               <button
                 type="button"
                 onClick={() => setIsDashboardRunOpen(false)}
-                className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/54 transition hover:text-white"
+                className="rounded-full border border-[var(--color-border)] px-3 py-1 text-sm text-muted transition hover:text-foreground"
               >
                 Close
               </button>
@@ -839,14 +838,14 @@ export function DashboardClient() {
             ) : null}
 
             {dashboardRunSummary?.riskyToken ? (
-              <div className="mt-5 rounded-2xl border border-[#d9a441]/20 bg-brand/8 p-4">
-                <div className="text-sm text-white/42">Riskiest holding</div>
+              <div className="mt-5 rounded-2xl border border-brand/20 bg-brand-subtle p-4">
+                <div className="text-sm text-subtle">Riskiest holding</div>
                 <div className="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                   <div>
                     <div className="text-2xl font-semibold">{dashboardRunSummary.riskyToken.symbol}</div>
-                    <div className="mt-1 text-sm text-white/46">{dashboardRunSummary.riskyToken.name}</div>
+                    <div className="mt-1 text-sm text-muted">{dashboardRunSummary.riskyToken.name}</div>
                   </div>
-                  <div className="text-sm text-white/54">
+                  <div className="text-sm text-muted">
                     {dashboardRunSummary.riskyToken.riskScore}/100 risk · {dashboardRunSummary.riskyToken.allocationPercent.toFixed(1)}% allocation
                   </div>
                 </div>
@@ -855,16 +854,16 @@ export function DashboardClient() {
 
             {dashboardRunSummary?.final ? (
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-white/6 p-4">
-                  <div className="text-sm text-white/42">Decision score</div>
+                <div className="rounded-2xl bg-[var(--color-glass-bg)] p-4">
+                  <div className="text-sm text-subtle">Decision score</div>
                   <div className="mt-1 text-3xl font-semibold">{dashboardRunSummary.final.score}</div>
                 </div>
-                <div className="rounded-2xl bg-white/6 p-4">
-                  <div className="text-sm text-white/42">Action</div>
+                <div className="rounded-2xl bg-[var(--color-glass-bg)] p-4">
+                  <div className="text-sm text-subtle">Action</div>
                   <div className="mt-2 text-lg font-semibold capitalize">{dashboardRunSummary.final.recommendedAction.replaceAll("_", " ")}</div>
                 </div>
-                <div className="rounded-2xl bg-white/6 p-4">
-                  <div className="text-sm text-white/42">Confidence</div>
+                <div className="rounded-2xl bg-[var(--color-glass-bg)] p-4">
+                  <div className="text-sm text-subtle">Confidence</div>
                   <div className="mt-1 text-3xl font-semibold">{Math.round(dashboardRunSummary.final.confidence * 100)}%</div>
                 </div>
               </div>
@@ -959,7 +958,7 @@ export function DashboardClient() {
             ) : null}
 
             {dashboardRunSummary?.saveStatus ? (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/6 p-4 text-sm text-white/52">
+              <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-glass-bg)] p-4 text-sm text-muted">
                 {dashboardRunSummary.saveStatus === "saving"
                   ? "Saving audit record..."
                   : dashboardRunSummary.saveStatus === "saved"
@@ -986,8 +985,8 @@ export function DashboardClient() {
       ) : null}
 
       {approvalFlowOpen && approvalPrepareData ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm">
-          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-white/10 bg-modal p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overlay-backdrop px-5 backdrop-blur-sm">
+          <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-[var(--color-border)] bg-modal p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm uppercase tracking-[0.18em] text-brand">Sign transaction</div>
@@ -999,7 +998,7 @@ export function DashboardClient() {
                   setApprovalFlowOpen(false);
                   setApprovalPrepareData(null);
                 }}
-                className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/54 transition hover:text-white"
+                className="rounded-full border border-[var(--color-border)] px-3 py-1 text-sm text-muted transition hover:text-foreground"
               >
                 Close
               </button>

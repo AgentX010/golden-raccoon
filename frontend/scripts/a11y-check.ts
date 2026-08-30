@@ -71,7 +71,20 @@ function main() {
     'Add `aria-label="Primary"` to both the desktop and mobile <nav> elements in AppShell.',
   );
 
+  check(
+    "AppShell renders ThemeToggle",
+    /ThemeToggle/.test(appShell),
+    "Import and render <ThemeToggle /> in AppShell so users can switch themes.",
+  );
+
   const globalsCss = readRepoFile("src/app/globals.css");
+  const themeFiles = ["src/theme/tokens.css", "src/theme/themes.css", "src/theme/ThemeProvider.tsx", "src/theme/useTheme.ts", "src/components/ThemeToggle.tsx"];
+  for (const file of themeFiles) {
+    check(`theme file exists: ${file}`, existsSync(repoPath(file)), `Create frontend/${file} as part of the theme system (issue #137).`);
+  }
+  const layout = readRepoFile("src/app/layout.tsx");
+  check("layout bootstraps theme before first paint", /theme-bootstrap/.test(layout) && /beforeInteractive/.test(layout) && /data-theme/.test(layout), "Add a beforeInteractive inline script in layout.tsx that sets document.documentElement data-theme from localStorage.");
+  check("layout.tsx wraps the app in ThemeProvider", /ThemeProvider/.test(layout), "Wrap children with ThemeProvider.");
   check(
     "globals.css defines :focus-visible styles",
     /:focus-visible\s*\{/.test(globalsCss),
@@ -109,6 +122,13 @@ function main() {
     /role="meter"/.test(riskScoreCard) && /aria-valuenow=\{category\.score\}/.test(riskScoreCard),
     'Add `role="meter"` with `aria-valuenow`/`aria-valuemin`/`aria-valuemax` to each category bar.',
   );
+
+
+  const hexLiteral = /#[0-9a-fA-F]{3,8}/;
+  for (const file of ["src/components/RiskScoreCard.tsx", "src/components/TokenScanClient.tsx", "src/components/DashboardClient.tsx"]) {
+    const content = readRepoFile(file);
+    check(`${file} has no hardcoded hex color literals`, !hexLiteral.test(content), `Replace literal hex colors in ${file} with semantic CSS variables or utility classes.`);
+  }
 
   const liveRegionPath = "src/components/a11y/LiveRegion.tsx";
   const visuallyHiddenPath = "src/components/a11y/VisuallyHidden.tsx";
@@ -165,6 +185,7 @@ function main() {
     "## Manual audit checklist",
     "## Before / after",
     "## Remaining manual steps",
+    "## Theme system (issue #137)",
   ];
   for (const heading of requiredHeadings) {
     check(
@@ -174,14 +195,6 @@ function main() {
     );
   }
 
-
-  for (const file of ["src/theme/tokens.css","src/theme/themes.css","src/theme/ThemeProvider.tsx","src/theme/useTheme.ts","src/components/ThemeToggle.tsx"]) {
-    check(`Theme file exists: ${file}`, existsSync(repoPath(file)), `Create frontend/${file} for issue #137.`);
-  }
-  const layout = readRepoFile("src/app/layout.tsx");
-  check("layout.tsx applies theme before first paint", /beforeInteractive/.test(layout) && /setAttribute\("data-theme"/.test(layout), "Add beforeInteractive theme bootstrap script.");
-  check("layout.tsx wraps the app in ThemeProvider", /ThemeProvider/.test(layout), "Wrap children with ThemeProvider.");
-  check("AppShell exposes ThemeToggle", /ThemeToggle/.test(appShell), "Render ThemeToggle in AppShell.");
   const themesCss = readRepoFile("src/theme/themes.css");
   for (const mode of ["light","dark","high-contrast","system"]) {
     check(`themes.css defines ${mode} palette`, mode=="dark" ? (/\[data-theme="dark"\]/.test(themesCss)||/:root:not\(\[data-theme\]\)/.test(themesCss)) : new RegExp(`\\[data-theme="${mode}"\\]`).test(themesCss), `Add ${mode} theme block.`);
