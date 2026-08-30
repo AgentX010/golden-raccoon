@@ -904,7 +904,7 @@ export function appendLifecycleEventByName(hash: string, event: TransactionLifec
 }
 
 export function isImmutableTerminal(status: TransactionLifecycleStatus) {
-  return status === "failed" || status === "replaced" || status === "dropped" || status === "expired" || status === "user_rejected";
+  return status === "confirmed" || status === "failed" || status === "replaced" || status === "dropped" || status === "expired" || status === "user_rejected";
 }
 
 export function listApprovalRecords(walletAddress?: string) {
