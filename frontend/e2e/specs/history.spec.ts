@@ -30,6 +30,6 @@ test.describe("History journey", () => {
   test("seeded EVM transaction appears in history table", async ({ page }) => {
     await page.goto("/history");
     await page.locator("summary:has-text('Recent activity')").click();
-    await expect(page.getByText("MEME", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("text=0xe2e0000000000000000000000000000000000000000000000000000000000002")).toBeVisible();
   });
 });

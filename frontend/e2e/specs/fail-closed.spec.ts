@@ -20,7 +20,6 @@ test.describe("Fail-closed paths", () => {
     await page.locator('button:has-text("Run token agents")').first().click();
     await expect(page.locator("text=AI Risk Report")).toBeVisible({ timeout: 15000 });
 
-    await page.locator("summary:has-text('Data quality')").click();
     await expect(page.getByText("Provider unavailable or token identity could not be resolved")).toBeVisible();
     await expect(page.getByText("Demo/mock data is present")).not.toBeVisible();
 

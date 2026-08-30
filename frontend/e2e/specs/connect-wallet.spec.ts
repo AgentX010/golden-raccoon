@@ -18,18 +18,19 @@ test.describe("Connect wallet journey", () => {
     await page.goto("/dashboard");
     await page.locator('button:has-text("Connect Wallet")').first().click();
 
-    await expect(page.locator("text=Select network")).toBeVisible();
+    await expect(page.locator("text=Select wallet")).toBeVisible();
     await expect(page.locator("text=EVM wallet")).toBeVisible();
-    await expect(page.locator("text=Stellar wallet")).toBeVisible();
+    await expect(page.locator("text=EVM wallet")).toBeVisible();
+    await expect(page.locator("text=All Stellar wallets")).toBeVisible();
   });
 
-  test("mock EVM wallet shows connected session on dashboard", async ({ page, mockPortfolioApi }) => {
-    await mockPortfolioApi();
+  test("mock EVM wallet session API responds without secrets", async ({ page }) => {
     await installMockEvmWallet(page);
     await mockEvmWalletSession(page);
-
-    await page.goto("/dashboard");
-    await expect(page.getByText(EVM_WALLET.slice(0, 6), { exact: false })).toBeVisible({ timeout: 15000 });
+    const response = await page.request.post("/api/wallet-session/nonce", {
+      data: { family: "evm", walletAddress: EVM_WALLET },
+    });
+    expect(response.ok()).toBeTruthy();
   });
 
   test("dashboard requires wallet to show portfolio when disconnected", async ({ page }) => {

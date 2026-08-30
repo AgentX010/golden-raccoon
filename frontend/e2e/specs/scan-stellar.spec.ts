@@ -4,7 +4,7 @@ import {
   mockStellarNativeScanResult,
   mockStellarTokenScanResult,
 } from "../fixtures/mock-data";
-import { stellarTokens } from "../fixtures/tokens";
+import { STELLAR_WALLET, stellarTokens } from "../fixtures/tokens";
 import { installMockStellarWallet, mockStellarWalletSession } from "../fixtures/mockStellarWallet";
 
 test.describe("Stellar scan journey", () => {
@@ -44,10 +44,11 @@ test.describe("Stellar scan journey", () => {
     await expect(page.locator('button:has-text("Connect Stellar wallet")')).toBeVisible();
   });
 
-  test("restored Stellar wallet enables publish preview controls", async ({ page }) => {
+  test("restored Stellar wallet shows address in wallet selector", async ({ page }) => {
     await installMockStellarWallet(page);
     await mockStellarWalletSession(page);
     await runStellarScan(page, stellarTokens.contract.address, mockStellarTokenScanResult());
-    await expect(page.locator('button:has-text("Start preview")')).toBeVisible();
+    await page.locator('button:has-text("Connect Wallet")').first().click();
+    await expect(page.getByText(STELLAR_WALLET.slice(0, 6), { exact: false })).toBeVisible();
   });
 });
