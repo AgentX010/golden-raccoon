@@ -1896,7 +1896,7 @@ function stellarRpcHealthConnected() {
 const classicAssetRecordFactory = (overrides: Record<string, unknown> = {}) => ({
   asset_code: "USDC",
   asset_issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-  contract_id: "CBMT5M7Z7Y4FJ3H7Y5K6L7M8N9O0P1Q2R3S4T5U6V7W8X9Y0Z1A2B3C4D",
+  contract_id: "CBTW63DEMVXC24TBMNRW633OFVZWCYZNMZUXQ5DVOJSSCIIAAAAABCDZ",
   num_liquidity_pools: 5,
   liquidity_pools_amount: "1250000",
   accounts: {
@@ -2042,7 +2042,7 @@ async function runStellarOnchainChecks() {
     fetchContractState: async () => sacContractState,
   };
   const sacResult = await runStellarOnchainAgent(
-    { chain: "stellar-testnet", contractAddress: "CBMT5M7Z7Y4FJ3H7Y5K6L7M8N9O0P1Q2R3S4T5U6V7W8X9Y0Z1A2B3C4D", assetType: "contract" },
+    { chain: "stellar-testnet", contractAddress: "CBTW63DEMVXC24TBMNRW633OFVZWCYZNMZUXQ5DVOJSSCIIAAAAABCDZ", assetType: "contract" },
     sacProviders,
   );
   assertAgentContract(sacResult);
