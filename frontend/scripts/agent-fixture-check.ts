@@ -38,6 +38,7 @@ import { POST as prepareExecution } from "../src/app/api/execute/prepare/route";
 import { POST as rejectExecution } from "../src/app/api/execute/reject/route";
 import { GET as getTransactionLifecycle } from "../src/app/api/execute/transactions/[hash]/route";
 import { GET as listTransactionHistory } from "../src/app/api/history/transactions/route";
+import { encodeWalletCookie, WALLET_SESSION_COOKIE } from "../src/server/security/walletSession";
 import {
   configureEvmSimulator,
   clearEvmSimulator,
@@ -70,6 +71,17 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function submitApiRequest(body: Record<string, unknown>) {
+  const walletAddress = String(body.walletAddress ?? "");
+  return new Request("http://localhost/api/execute/submit", {
+    method: "POST",
+    headers: {
+      Cookie: `${WALLET_SESSION_COOKIE}=${encodeWalletCookie(walletAddress)}`,
+    },
+    body: JSON.stringify(body),
+  });
 }
 
 function cleanSecurity(overrides: Record<string, unknown> = {}) {
@@ -1680,18 +1692,15 @@ async function runTransactionLifecycleChecks() {
 
   // ---- API route level coverage ----
   const submitResponse = await submitExecution(
-    new Request("http://localhost/api/execute/submit", {
-      method: "POST",
-      body: JSON.stringify({
-        chainFamily: "stellar",
-        network: "stellar-testnet",
-        walletAddress: stellarWallet,
-        signedPayload: `${"7".repeat(64)}`,
-        asset: "GOAT",
-        decisionId: "decision_route_stellar",
-        userApproved: true,
-        idempotencyKey: "idem_route_stellar",
-      }),
+    submitApiRequest({
+      chainFamily: "stellar",
+      network: "stellar-testnet",
+      walletAddress: stellarWallet,
+      signedPayload: `${"7".repeat(64)}`,
+      asset: "GOAT",
+      decisionId: "decision_route_stellar",
+      userApproved: true,
+      idempotencyKey: "idem_route_stellar",
     }),
   );
   assert(submitResponse.status === 200, "Stellar submit API must accept valid Stellar payloads.");
@@ -1701,32 +1710,26 @@ async function runTransactionLifecycleChecks() {
   const stellarHash2 = `${"7".repeat(64)}`;
   const stellarHash2Lower = stellarHash2.toLowerCase();
   const wrongFamilyResponse = await submitExecution(
-    new Request("http://localhost/api/execute/submit", {
-      method: "POST",
-      body: JSON.stringify({
-        chainFamily: "evm",
-        network: "stellar-testnet",
-        walletAddress: stellarWallet,
-        signedPayload: stellarHash2Lower,
-        asset: "GOAT",
-        userApproved: true,
-        idempotencyKey: "idem_route_wrong_family",
-      }),
+    submitApiRequest({
+      chainFamily: "evm",
+      network: "stellar-testnet",
+      walletAddress: stellarWallet,
+      signedPayload: stellarHash2Lower,
+      asset: "GOAT",
+      userApproved: true,
+      idempotencyKey: "idem_route_wrong_family",
     }),
   );
   assert(wrongFamilyResponse.status === 400, "Submit must reject when chain family does not match network.");
 
   const wrongWalletFormat = await submitExecution(
-    new Request("http://localhost/api/execute/submit", {
-      method: "POST",
-      body: JSON.stringify({
-        chainFamily: "evm",
-        network: "GOAT Network",
-        walletAddress: "not-an-address",
-        signedPayload: `0x${"a".repeat(64)}`,
-        asset: "MEME",
-        userApproved: true,
-      }),
+    submitApiRequest({
+      chainFamily: "evm",
+      network: "GOAT Network",
+      walletAddress: "not-an-address",
+      signedPayload: `0x${"a".repeat(64)}`,
+      asset: "MEME",
+      userApproved: true,
     }),
   );
   assert(wrongWalletFormat.status === 400, "Submit must reject invalid wallets.");
@@ -1734,17 +1737,14 @@ async function runTransactionLifecycleChecks() {
   const evmMismatchedSourceWallet = `0x${"a".repeat(40)}`;
   const evmMismatchedSourceOther = `0x${"d".repeat(40)}`;
   const evmMismatchedSource = await submitExecution(
-    new Request("http://localhost/api/execute/submit", {
-      method: "POST",
-      body: JSON.stringify({
-        chainFamily: "evm",
-        network: "GOAT Network",
-        walletAddress: evmMismatchedSourceWallet,
-        sourceAccount: evmMismatchedSourceOther,
-        signedPayload: `0x${"b".repeat(64)}`,
-        asset: "MEME",
-        userApproved: true,
-      }),
+    submitApiRequest({
+      chainFamily: "evm",
+      network: "GOAT Network",
+      walletAddress: evmMismatchedSourceWallet,
+      sourceAccount: evmMismatchedSourceOther,
+      signedPayload: `0x${"b".repeat(64)}`,
+      asset: "MEME",
+      userApproved: true,
     }),
   );
   assert(evmMismatchedSource.status === 403, "Submit must reject EVM source/wallet mismatches.");
@@ -1796,10 +1796,10 @@ async function runTransactionLifecycleChecks() {
 
   const richHistory = await listTransactionHistory(new NextRequest(`http://localhost/api/history/transactions?walletAddress=0xabc`, { method: "GET" }));
   assert(richHistory.status === 200, "History endpoint must respond 200.");
-  const historyJson = await richHistory.json();
-  assert(Array.isArray(historyJson) && historyJson.length > 0, "History endpoint must return enriched records.");
-  assert(historyJson.every((record: { events?: unknown[] }) => Array.isArray(record.events)), "History records must include their lifecycle events.");
-  assert(historyJson.every((record: { explorerUrl?: string }) => typeof record.explorerUrl === "string"), "History records must include an explorer URL.");
+  const historyJson = await richHistory.json() as { items?: Array<{ events?: unknown[]; explorerUrl?: string }> };
+  assert(Array.isArray(historyJson.items) && historyJson.items.length > 0, "History endpoint must return enriched records.");
+  assert(historyJson.items.every((record) => Array.isArray(record.events)), "History records must include their lifecycle events.");
+  assert(historyJson.items.every((record) => typeof record.explorerUrl === "string"), "History records must include an explorer URL.");
 
   // Storage invariants
   const lookupByHash = getTransactionRecord(evmSubmitted.transaction.hash);
