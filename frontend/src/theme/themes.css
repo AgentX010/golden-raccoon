@@ -81,7 +81,7 @@
   --color-fg: #ffffff;
   --color-fg-muted: #ffffff;
   --color-fg-subtle: #ffffff;
-  --color-fg-inverse: #ffffff;
+  --color-fg-inverse: #000000;
 
   --color-brand: #ffcc00;
   --color-brand-hover: #ffe066;
