@@ -46,7 +46,6 @@ export default defineConfig({
     },
     {
       name: "legacy-desktop",
-      dependencies: ["setup"],
       testMatch: /^(?!specs\/).*\.spec\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
@@ -72,7 +71,7 @@ export default defineConfig({
         command: "npm run dev",
         port: 3000,
         timeout: 120_000,
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         env: {
           NODE_ENV: "test",
           APP_MODE: "test",

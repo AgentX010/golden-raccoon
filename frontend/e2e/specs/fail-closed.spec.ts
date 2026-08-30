@@ -4,7 +4,6 @@ import {
   mockUnpricedAssetScanResult,
 } from "../fixtures/mock-data";
 import { evmTokens } from "../fixtures/tokens";
-import { installMockEvmWallet, mockEvmWalletSession } from "../fixtures/mockEvmWallet";
 
 test.describe("Fail-closed paths", () => {
   test("unavailable provider shows conservative unavailable state, not mock success", async ({ page }) => {
@@ -122,11 +121,8 @@ test.describe("Fail-closed paths", () => {
     expect(afterCount).toBe(beforeCount);
   });
 
-  test("portfolio provider unavailable shows fail-closed dashboard state", async ({ page, mockPortfolioApi }) => {
+  test("portfolio provider unavailable shows fail-closed dashboard state", async ({ page, mockPortfolioApi, setupWalletConnected }) => {
     await mockPortfolioApi({ returnError: true });
-    await installMockEvmWallet(page);
-    await mockEvmWalletSession(page);
-
     await page.goto("/dashboard");
     await expect(page.getByText("Provider unavailable")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("No mock data used")).toBeVisible();
