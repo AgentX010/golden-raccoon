@@ -17,7 +17,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyThemeToDocument(theme);
-    setResolvedTheme(resolveTheme(theme));
+    queueMicrotask(() => setResolvedTheme(resolveTheme(theme)));
 
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, theme);
