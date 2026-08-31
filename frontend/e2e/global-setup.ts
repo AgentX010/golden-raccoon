@@ -1,0 +1,2 @@
+import fs from "node:fs"; import path from "node:path"; import type { FullConfig } from "@playwright/test"; import { E2E_SEED_EPOCH } from "../src/lib/e2e/tokens";
+export default async function globalSetup(_config: FullConfig) { process.env.E2E_SEED_EPOCH = E2E_SEED_EPOCH; process.env.TZ = "UTC"; const p = path.join(process.cwd(), "e2e/.seed-state.json"); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify({ epoch: E2E_SEED_EPOCH }, null, 2)); }

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { useStellarWallet } from "@/providers/StellarWalletProvider";
+import { readE2eWalletOverride } from "@/lib/e2e/browserWallet";
 import {
   isWalletFamily,
   SELECTED_WALLET_FAMILY_KEY,
@@ -48,7 +49,7 @@ function buildWalletSession(
   const isRestored = selectedIsStellar && stellar.isRestored;
   const evmExplorer = evm.chain?.blockExplorers?.default.url;
 
-  return {
+  const session = {
     family,
     selectedFamily,
     selectFamily,
@@ -75,6 +76,46 @@ function buildWalletSession(
     stellar,
     evm,
   } as const;
+
+  const e2eWallet = readE2eWalletOverride();
+  if (!e2eWallet) return session;
+
+  if (e2eWallet.family === "evm") {
+    return {
+      ...session,
+      family: "evm" as const,
+      selectedFamily: "evm" as const,
+      address: e2eWallet.address,
+      chain: e2eWallet.chainName ?? "Base",
+      chainId: e2eWallet.chainId,
+      walletType: "E2E wallet",
+      explorerUrl: `https://basescan.org/address/${e2eWallet.address}`,
+      signerCapability: "ready" as const,
+      isConnected: true,
+      isConnecting: false,
+      isRestored: false,
+      status: "connected" as const,
+      connectedFamilies: {
+        evm: true,
+        stellar: session.connectedFamilies.stellar,
+      },
+    };
+  }
+
+  return {
+    ...session,
+    family: "stellar" as const,
+    selectedFamily: "stellar" as const,
+    address: e2eWallet.address,
+    chain: e2eWallet.network,
+    walletType: e2eWallet.walletName ?? "Freighter (e2e)",
+    explorerUrl: `${e2eWallet.network === "stellar-pubnet" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet"}/account/${e2eWallet.address}`,
+    signerCapability: "reconnect" as const,
+    isConnected: false,
+    isConnecting: false,
+    isRestored: true,
+    status: "restored" as const,
+  };
 }
 
 export function WalletSessionProvider({ children }: { children: ReactNode }) {
