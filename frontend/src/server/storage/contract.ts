@@ -2,11 +2,7 @@
  * Storage schema contract shared by all adapters.
  * Used by the health endpoint and deploy readiness checks.
  */
-export const storageSchemaContract: {
-  tables: string[];
-  adapterApi: string[];
-  migration: string;
-} = {
+export const storageSChemaContract: {
   tables: [
     "wallets",
     "agent_runs",
@@ -16,6 +12,7 @@ export const storageSchemaContract: {
     "approvals",
     "transactions",
     "x402_payment_receipts",
+    "x402_settlement_ledger",
     "token_identities",
     "source_snapshots",
   ],
@@ -36,4 +33,7 @@ export const storageSchemaContract: {
     "upsertUserRuleRecord",
   ],
   migration: "frontend/src/server/storage/schema.sql",
+  sensitiveColumns: {
+    wallets: ["address"],
+  },
 };
