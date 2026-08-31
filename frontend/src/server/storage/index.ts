@@ -62,6 +62,7 @@ export {
   pruneExpiredRecordsFromPg,
 };
 import { clearPortfolioCacheForWallet } from "@/server/stellar/portfolio";
+import { invalidatePortfolioForWallet, invalidateWalletCache } from "@/server/cache";
 import { resetDevEnvironment, seedDevEnvironment } from "./bootstrap";
 
 export const devReset = resetDevEnvironment;
@@ -250,6 +251,7 @@ export const storageSchemaContract = {
     "watchlist_entries",
     "watchlist_scan_runs",
     "discovery_alerts",
+    "authz_audit_entries",
   ],
   adapterApi: [
     "listAgentRunRecords",
@@ -816,6 +818,7 @@ export function createTransactionRecord(input: Omit<TransactionRecord, "createdA
 
   getTransactions().unshift(record);
   persistTransactionRecord(record);
+  if (record.walletAddress) invalidatePortfolioForWallet(record.walletAddress);
 
   return record;
 }
@@ -841,6 +844,7 @@ export function updateTransactionRecord(hash: string, updates: Partial<Omit<Tran
 
   list[existingIndex] = merged;
   persistTransactionUpdate(hash, updates);
+  if (merged.walletAddress) invalidatePortfolioForWallet(merged.walletAddress);
 
   return merged;
 }
@@ -1070,6 +1074,7 @@ export function addWatchlistEntry(input: CreateWatchlistInput): AddWatchlistEntr
 
   getWatchlistEntries().unshift(entry);
   mirrorWatchlistEntryWrite(entry);
+  invalidateWalletCache(entry.walletAddress);
 
   return { entry, alreadyExisted: false };
 }
@@ -1089,6 +1094,8 @@ export function removeWatchlistEntry(id: string) {
 
   if (removed > 0) {
     mirrorWatchlistEntryDeletion(id);
+    const removedEntry = store.find((entry) => entry.id === id);
+    if (removedEntry?.walletAddress) invalidateWalletCache(removedEntry.walletAddress);
   }
 
   return removed > 0;
@@ -1164,6 +1171,7 @@ export function updateWatchlistEntryLatestScan(
   entry.lastScannedAt = update.scannedAt;
   entry.latestScanRunId = update.scanRunId;
   entry.latestStatus = update.status === "failed" ? "stale" : update.status;
+  invalidateWalletCache(entry.walletAddress);
 
   if (update.status === "failed") {
     const hasPriorSuccess = entry.successfulScanRunIds && entry.successfulScanRunIds.length > 0;
@@ -1515,7 +1523,8 @@ export function addWatchlistEntriesBulk(inputs: CreateWatchlistInput[]): { appli
 
   if (added.length > 0) {
     existingStore.unshift(...added);
-    mirrorWatchlistEntryWriteBulk(added);
+  mirrorWatchlistEntryWriteBulk(added);
+  for (const entry of added) invalidateWalletCache(entry.walletAddress);
   }
 
   return { appliedCount: added.length };

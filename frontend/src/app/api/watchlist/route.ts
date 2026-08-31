@@ -4,6 +4,9 @@ import { checkRateLimit } from "@/server/security/rateLimit";
 import { addToWatchlist, listWatchlist, removeFromWatchlist } from "@/server/discovery/watchlist";
 import { ensureStorageReady } from "@/server/storage";
 import { resolveWalletSession } from "@/server/security/walletSession";
+import { evaluateCapability } from "@/server/security/authz";
+
+export const AUTHZ_CAPABILITY = "watchlist:write" as const;
 
 const addBodySchema = z.object({
   action: z.enum(["add"]).default("add"),
@@ -51,6 +54,13 @@ export async function GET(request: Request) {
   const session = resolveWalletSession(request, { suppliedWallet: parsed.data.walletAddress });
   if (session.response) return session.response;
 
+  const authz = evaluateCapability(
+    { kind: "wallet", walletAddress: session.wallet, walletHash: "route" },
+    "portfolio:read",
+    { walletAddress: session.wallet },
+  );
+  if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
+
   return NextResponse.json({ entries: listWatchlist(session.wallet!) });
 }
 
@@ -72,6 +82,12 @@ export async function POST(request: Request) {
     const session = resolveWalletSession(request, { suppliedWallet: parsedAdd.data.walletAddress });
     if (session.response) return session.response;
     const wallet = session.wallet!;
+    const authz = evaluateCapability(
+      { kind: "wallet", walletAddress: wallet, walletHash: "route", chainFamily: parsedAdd.data.chain?.startsWith("stellar") ? "stellar" : "evm", network: parsedAdd.data.network?.toLowerCase() },
+      AUTHZ_CAPABILITY,
+      { walletAddress: wallet, network: parsedAdd.data.network },
+    );
+    if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
 
     const result = await addToWatchlist({
       walletAddress: wallet,
@@ -106,6 +122,13 @@ export async function POST(request: Request) {
     if (!owned) {
       return NextResponse.json({ error: "Entry not found or does not belong to this wallet." }, { status: 404 });
     }
+
+    const authz = evaluateCapability(
+      { kind: "wallet", walletAddress: session.wallet, walletHash: "route" },
+      AUTHZ_CAPABILITY,
+      { walletAddress: session.wallet, id: parsedRemove.data.entryId },
+    );
+    if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
 
     const ok = await removeFromWatchlist(parsedRemove.data.entryId);
 
