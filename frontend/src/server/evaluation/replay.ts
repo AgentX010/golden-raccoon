@@ -61,7 +61,7 @@ export function compareReplayTranscript(expected: AgentRunTranscript, replayed: 
 export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "sourceSnapshotHash">> = {
   stellar_xlm: {
     agent: "onchain",
-    riskScore: 20,
+    riskScore: 6,
     recommendedAction: "hold",
     chainFamily: "stellar",
     fixtureName: "stellar_xlm",
@@ -69,7 +69,7 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   },
   stellar_known_classic: {
     agent: "onchain",
-    riskScore: 15,
+    riskScore: 10,
     recommendedAction: "hold",
     chainFamily: "stellar",
     fixtureName: "stellar_known_classic",
@@ -93,7 +93,7 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   },
   stellar_sep41: {
     agent: "onchain",
-    riskScore: 46,
+    riskScore: 32,
     recommendedAction: "watch",
     chainFamily: "stellar",
     fixtureName: "stellar_sep41",
@@ -102,15 +102,15 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   stellar_invalid_issuer: {
     agent: "onchain",
     riskScore: 74,
-    recommendedAction: "manual_review",
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_invalid_issuer",
     migrationNote: "Asset with unconfirmed issuer should be high/critical risk.",
   },
   stellar_unknown_contract: {
     agent: "onchain",
-    riskScore: 71,
-    recommendedAction: "manual_review",
+    riskScore: 75,
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_unknown_contract",
     migrationNote: "Contract address with no deployed code should be high/critical risk.",
@@ -118,7 +118,7 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   stellar_unavailable_provider: {
     agent: "onchain",
     riskScore: 77,
-    recommendedAction: "manual_review",
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_unavailable_provider",
     migrationNote: "Unavailable Stellar RPC should produce high risk with reduced confidence.",

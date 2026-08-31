@@ -1,0 +1,192 @@
+/*
+ * Theme palettes: dark (default), light, high-contrast, and system (OS-driven).
+ * Applied via data-theme on <html>.
+ */
+
+/* Dark — default product look */
+[data-theme="dark"],
+:root:not([data-theme]) {
+  color-scheme: dark;
+}
+
+/* Light */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: #f4f1e8;
+  --color-bg-elevated: #ffffff;
+  --color-panel: #ffffff;
+  --color-modal: #ffffff;
+  --color-dropdown: #ffffff;
+  --color-tooltip: #ffffff;
+
+  --color-fg: #12110f;
+  --color-fg-muted: rgba(18, 17, 15, 0.62);
+  --color-fg-subtle: rgba(18, 17, 15, 0.42);
+  --color-fg-inverse: #ffffff;
+
+  --color-brand: #9a6b12;
+  --color-brand-hover: #7a540e;
+  --color-brand-muted: #7a540e;
+  --color-brand-subtle: rgba(154, 107, 18, 0.12);
+  --color-brand-border: rgba(154, 107, 18, 0.28);
+
+  --color-border: rgba(18, 17, 15, 0.12);
+  --color-border-strong: rgba(18, 17, 15, 0.18);
+  --color-glass-border: rgba(18, 17, 15, 0.14);
+  --color-glass-bg: rgba(255, 255, 255, 0.72);
+  --color-glass-highlight: rgba(255, 255, 255, 0.9);
+  --color-glass-shadow: rgba(18, 17, 15, 0.08);
+  --color-overlay: rgba(18, 17, 15, 0.45);
+
+  --color-focus: #7a540e;
+  --color-focus-ring-offset: #f4f1e8;
+  --color-selection-bg: #d9a441;
+  --color-selection-fg: #12110f;
+
+  --color-risk-low: #065f46;
+  --color-risk-medium: #78350f;
+  --color-risk-high: #b91c1c;
+  --color-risk-low-bg: rgba(4, 120, 87, 0.1);
+  --color-risk-medium-bg: rgba(180, 83, 9, 0.1);
+  --color-risk-high-bg: rgba(185, 28, 28, 0.1);
+  --color-risk-low-border: rgba(4, 120, 87, 0.28);
+  --color-risk-medium-border: rgba(180, 83, 9, 0.28);
+  --color-risk-high-border: rgba(185, 28, 28, 0.28);
+
+  --color-success: #047857;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
+
+  --color-header-bg: rgba(244, 241, 232, 0.92);
+  --color-nav-fg: rgba(18, 17, 15, 0.68);
+  --color-nav-hover-bg: rgba(18, 17, 15, 0.06);
+
+  --color-gauge-track: rgba(18, 17, 15, 0.1);
+  --color-gauge-marker-stem: #f4f1e8;
+  --color-gauge-marker-ring: #12110f;
+}
+
+/* High contrast — stronger separation for low-vision users */
+[data-theme="high-contrast"] {
+  color-scheme: dark;
+
+  --color-bg: #000000;
+  --color-bg-elevated: #000000;
+  --color-panel: #000000;
+  --color-modal: #000000;
+  --color-dropdown: #000000;
+  --color-tooltip: #000000;
+
+  --color-fg: #ffffff;
+  --color-fg-muted: #ffffff;
+  --color-fg-subtle: #ffffff;
+  --color-fg-inverse: #000000;
+
+  --color-brand: #ffcc00;
+  --color-brand-hover: #ffe066;
+  --color-brand-muted: #ffe066;
+  --color-brand-subtle: #1a1400;
+  --color-brand-border: #ffcc00;
+
+  --color-border: #ffffff;
+  --color-border-strong: #ffffff;
+  --color-glass-border: #ffffff;
+  --color-glass-bg: #000000;
+  --color-glass-highlight: #ffffff;
+  --color-glass-shadow: transparent;
+  --color-overlay: rgba(0, 0, 0, 0.85);
+
+  --color-focus: #ffcc00;
+  --color-focus-ring-offset: #000000;
+  --color-selection-bg: #ffcc00;
+  --color-selection-fg: #000000;
+
+  --color-risk-low: #00ff88;
+  --color-risk-medium: #ffcc00;
+  --color-risk-high: #ff4444;
+  --color-risk-low-bg: #001a0d;
+  --color-risk-medium-bg: #1a1400;
+  --color-risk-high-bg: #1a0000;
+  --color-risk-low-border: #00ff88;
+  --color-risk-medium-border: #ffcc00;
+  --color-risk-high-border: #ff4444;
+
+  --color-success: #00ff88;
+  --color-warning: #ffcc00;
+  --color-danger: #ff4444;
+
+  --color-header-bg: #000000;
+  --color-nav-fg: #ffffff;
+  --color-nav-hover-bg: #1a1a1a;
+
+  --color-gauge-track: #ffffff;
+  --color-gauge-marker-stem: #000000;
+  --color-gauge-marker-ring: #ffffff;
+}
+
+/* System — follow OS color scheme */
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    color-scheme: light;
+
+    --color-bg: #f4f1e8;
+    --color-bg-elevated: #ffffff;
+    --color-panel: #ffffff;
+    --color-modal: #ffffff;
+    --color-dropdown: #ffffff;
+    --color-tooltip: #ffffff;
+
+    --color-fg: #12110f;
+    --color-fg-muted: rgba(18, 17, 15, 0.62);
+    --color-fg-subtle: rgba(18, 17, 15, 0.42);
+    --color-fg-inverse: #ffffff;
+
+    --color-brand: #9a6b12;
+    --color-brand-hover: #7a540e;
+    --color-brand-muted: #7a540e;
+    --color-brand-subtle: rgba(154, 107, 18, 0.12);
+    --color-brand-border: rgba(154, 107, 18, 0.28);
+
+    --color-border: rgba(18, 17, 15, 0.12);
+    --color-border-strong: rgba(18, 17, 15, 0.18);
+    --color-glass-border: rgba(18, 17, 15, 0.14);
+    --color-glass-bg: rgba(255, 255, 255, 0.72);
+    --color-glass-highlight: rgba(255, 255, 255, 0.9);
+    --color-glass-shadow: rgba(18, 17, 15, 0.08);
+    --color-overlay: rgba(18, 17, 15, 0.45);
+
+    --color-focus: #7a540e;
+    --color-focus-ring-offset: #f4f1e8;
+    --color-selection-bg: #d9a441;
+    --color-selection-fg: #12110f;
+
+    --color-risk-low: #065f46;
+    --color-risk-medium: #78350f;
+    --color-risk-high: #b91c1c;
+    --color-risk-low-bg: rgba(4, 120, 87, 0.1);
+    --color-risk-medium-bg: rgba(180, 83, 9, 0.1);
+    --color-risk-high-bg: rgba(185, 28, 28, 0.1);
+    --color-risk-low-border: rgba(4, 120, 87, 0.28);
+    --color-risk-medium-border: rgba(180, 83, 9, 0.28);
+    --color-risk-high-border: rgba(185, 28, 28, 0.28);
+
+    --color-success: #047857;
+    --color-warning: #b45309;
+    --color-danger: #b91c1c;
+
+    --color-header-bg: rgba(244, 241, 232, 0.92);
+    --color-nav-fg: rgba(18, 17, 15, 0.68);
+    --color-nav-hover-bg: rgba(18, 17, 15, 0.06);
+
+    --color-gauge-track: rgba(18, 17, 15, 0.1);
+    --color-gauge-marker-stem: #f4f1e8;
+    --color-gauge-marker-ring: #12110f;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    color-scheme: dark;
+  }
+}

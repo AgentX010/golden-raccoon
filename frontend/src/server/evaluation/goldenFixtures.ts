@@ -16,6 +16,14 @@ export const goldenFixtureSuite = [
   "polling_resume_after_restart",
   "provider_outage_backoff",
   "stale_cursor_freshness",
+  "stellar_xlm",
+  "stellar_known_classic",
+  "stellar_restricted_asset",
+  "stellar_sac",
+  "stellar_sep41",
+  "stellar_invalid_issuer",
+  "stellar_unknown_contract",
+  "stellar_unavailable_provider",
 ] as const;
 
 export type GoldenFixtureName = (typeof goldenFixtureSuite)[number];
@@ -44,6 +52,14 @@ export const goldenScoreSnapshots: Record<GoldenFixtureName, { min: number; max:
   polling_resume_after_restart: { min: 0, max: 100 },
   provider_outage_backoff: { min: 0, max: 100 },
   stale_cursor_freshness: { min: 0, max: 100 },
+  stellar_xlm: { min: 0, max: 35 },
+  stellar_known_classic: { min: 0, max: 25 },
+  stellar_restricted_asset: { min: 25, max: 49 },
+  stellar_sac: { min: 0, max: 25 },
+  stellar_sep41: { min: 25, max: 55 },
+  stellar_invalid_issuer: { min: 50, max: 90 },
+  stellar_unknown_contract: { min: 50, max: 90 },
+  stellar_unavailable_provider: { min: 50, max: 90 },
 };
 
 export function assertGoldenScore(name: GoldenFixtureName, score: number) {

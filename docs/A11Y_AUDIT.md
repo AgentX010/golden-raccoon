@@ -144,6 +144,10 @@ to `npm run test:a11y`:
   even after the AA-level fixes above.
 
 
+## Theme system (issue #137)
+
+Golden Raccoon ships four user-selectable themes: **light**, **dark** (default), **system**, and **high-contrast**. Tokens live in `frontend/src/theme/`; choice persists in `localStorage` (`golden-raccoon-theme`) and is applied before first paint via a blocking script in `layout.tsx`. `ThemeToggle` in `AppShell` exposes all modes. Risk UI in `RiskScoreCard`, `TokenScanClient`, and `DashboardClient` uses semantic tokens plus text/icons. `npm run test:a11y` checks theme files and key contrast pairs.
+
 ## Responsive layout and touch targets (issue #148)
 
 Wallet users typically operate from a phone, so the data-dense read path — the

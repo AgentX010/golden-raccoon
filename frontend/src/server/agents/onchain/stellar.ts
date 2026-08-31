@@ -194,7 +194,8 @@ export async function runStellarOnchainAgent(input: StellarOnchainAgentInput, pr
 
   const issuerFlags = assetRecord?.flags ?? issuerAccount?.flags;
   const native = identity.type === "native";
-  const issuerExists = native || issuerAccount !== null;
+  const sacBacked = contractState?.type === "stellar_asset_contract";
+  const issuerExists = native || issuerAccount !== null || sacBacked;
   const authRequired = issuerFlags?.auth_required === true;
   const authRevocable = issuerFlags?.auth_revocable === true;
   const authClawback = issuerFlags?.auth_clawback_enabled === true;
@@ -209,8 +210,12 @@ export async function runStellarOnchainAgent(input: StellarOnchainAgentInput, pr
   const identityScore = native || assetRecord || contractState || issuerAccount ? (issuerConflict ? 68 : 8) : 80;
   const issuerControlScore = native
     ? 0
+    : sacBacked && !assetRecord && !issuerAccount
+      ? 8
     : !issuerExists
-      ? 90
+      ? contractState?.type === "wasm_contract"
+        ? 42
+        : 90
       : issuerConflict
         ? 78
         : authClawback
@@ -225,7 +230,15 @@ export async function runStellarOnchainAgent(input: StellarOnchainAgentInput, pr
                   ? 8
                   : 25;
   const liquidityScore = native ? 8 : identity.type === "contract" ? 55 : liquidityPools === 0 ? 72 : liquidityAmount <= 0 ? 58 : liquidityPools < 3 ? 42 : 18;
-  const contractScore = contractState ? (contractState.type === "stellar_asset_contract" ? 8 : 28) : identity.type === "issuer_account" ? 35 : 78;
+  const contractScore = contractState
+    ? contractState.type === "stellar_asset_contract"
+      ? 8
+      : 28
+    : native
+      ? 8
+      : identity.type === "issuer_account"
+        ? 35
+        : 78;
   const sourceScore = health && (assetRecord || contractState || native) ? (issuerConflict || sep1Blocked ? 45 : 10) : health ? 42 : 78;
 
   const score = weightedScore([
@@ -293,7 +306,9 @@ export async function runStellarOnchainAgent(input: StellarOnchainAgentInput, pr
         ? contractState.type === "stellar_asset_contract"
           ? "The contract is a built-in Stellar Asset Contract implementing the standard asset interface."
           : "A deployed Soroban WASM contract was confirmed; SEP-41 behavior still requires method simulation."
-        : "No deployed Soroban contract instance was confirmed for this identity.",
+        : native
+          ? "Native XLM is not deployed as a Soroban contract instance."
+          : "No deployed Soroban contract instance was confirmed for this identity.",
     },
     {
       label: "Contract storage",
