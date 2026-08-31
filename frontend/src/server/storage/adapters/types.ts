@@ -2,6 +2,7 @@ import type {
   AgentResult,
   AgentRunRecord,
   AlertDelivery,
+  NotificationPreferences,
   RecommendationRecord,
   StorageCounts,
   StorageHealth,
@@ -245,6 +246,14 @@ export interface IStorageAdapter {
     walletAddress: string,
     patch: Partial<AlertDelivery>,
   ): Promise<AlertDelivery | null>;
+
+  // ─── Notification preferences ───────────────────────────────
+  getNotificationPreferences(scope: {
+    walletAddress: string;
+    chainFamily: "evm" | "stellar";
+    network: string;
+  }): Promise<NotificationPreferences | null>;
+  upsertNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences>;
 
   // ─── Health & counts ─────────────────────────────────────────────
   getStorageHealth(): Promise<StorageHealth>;

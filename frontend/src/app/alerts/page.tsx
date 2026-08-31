@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { AppShell } from "@/components/AppShell";
 import { AlertRuleForm } from "@/components/AlertRuleForm";
 import { AlertHistoryList } from "@/components/AlertHistoryList";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { ensureDefaultRulesForWallet } from "@/server/observability/alertIngestion";
 import { ensureStorageReady, listAlertRules } from "@/server/storage";
 import { decodeWalletCookie } from "@/server/security/walletSession";
@@ -80,6 +81,8 @@ export default async function AlertsPage() {
             <AlertHistoryList />
           </div>
         </section>
+
+        <NotificationPreferences />
       </div>
     </AppShell>
   );
