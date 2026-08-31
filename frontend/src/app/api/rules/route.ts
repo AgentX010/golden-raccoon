@@ -9,6 +9,9 @@ import {
   networkSchema,
   validateChainScopedWallet,
 } from "@/server/security/inputValidation";
+import { evaluateCapability } from "@/server/security/authz";
+
+export const AUTHZ_CAPABILITY = "rules:write" as const;
 
 const ruleSchema = z.object({
   chainFamily: chainFamilySchema.optional(),
@@ -79,6 +82,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const authz = evaluateCapability(
+      { kind: "wallet", walletAddress: parsed.data.walletAddress, walletHash: "route", chainFamily: parsed.data.chainFamily, network: parsed.data.network?.toLowerCase() },
+      AUTHZ_CAPABILITY,
+      { walletAddress: parsed.data.walletAddress, chainFamily: parsed.data.chainFamily, network: parsed.data.network },
+    );
+    if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
     assertApprovalOnly({ autoExecute: parsed.data.autoExecute });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Execution policy failed" }, { status: 403 });

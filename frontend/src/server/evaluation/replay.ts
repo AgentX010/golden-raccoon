@@ -1,4 +1,6 @@
 import type { AgentResult } from "@/server/types";
+import { diffTranscripts } from "./harness/diff";
+import type { AgentRunTranscript } from "./harness/transcript";
 
 export type ReplaySnapshot = {
   agent: AgentResult["agent"];
@@ -41,6 +43,14 @@ export function compareReplaySnapshot(snapshot: ReplaySnapshot, replayed: AgentR
     compatible,
     migrationNote: compatible ? undefined : "Replay drift detected; attach migration note before accepting changed decision behavior.",
   };
+}
+
+export function compareReplayTranscript(expected: AgentRunTranscript, replayed: AgentRunTranscript) {
+  if (expected.chainFamily !== replayed.chainFamily || expected.network !== replayed.network || expected.assetIdentity.asset !== replayed.assetIdentity.asset) {
+    return { compatible: false, migrationNote: "Replay identity drift detected; chain family, network, and asset must remain bound." };
+  }
+  const diff = diffTranscripts(expected, replayed);
+  return { compatible: diff.identical, differences: diff.differences, migrationNote: diff.identical ? undefined : "Replay drift detected; review the stage and field diff before accepting a changed baseline." };
 }
 
 /**
@@ -114,4 +124,3 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
     migrationNote: "Unavailable Stellar RPC should produce high risk with reduced confidence.",
   },
 };
-

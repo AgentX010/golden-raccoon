@@ -9,6 +9,7 @@ import { runAgentSafely } from "@/server/agents/shared";
 import { createAgentRunId, createRunStepMetadata, getRunPartialStatus } from "@/server/agents/orchestrationState";
 import { resolveTokenIdentity } from "@/server/identity/tokenIdentity";
 import { createAgentRunRecord, getUserRuleRecord } from "@/server/storage";
+import { createTranscriptRecorder, type AgentRunTranscript } from "@/server/evaluation/harness";
 
 export type AgentRunMode = "portfolio_review" | "token_scan" | "pre_buy_check" | "holding_review" | "execution_prepare" | "discovery_candidate";
 
@@ -33,6 +34,7 @@ type AgentOrchestrationResult = {
   runRecord?: AgentRunRecord;
   runId: string;
   partialStatus: ReturnType<typeof getRunPartialStatus>;
+  transcript?: AgentRunTranscript;
 };
 
 function getRiskiestHolding(portfolio?: PortfolioSnapshot): AgentInputIdentity | undefined {
@@ -132,6 +134,13 @@ function getDependencyGraph(mode: AgentRunMode) {
 
 export async function runAgentOrchestration(input: AgentOrchestrationInput): Promise<AgentOrchestrationResult> {
   const runId = createAgentRunId();
+  const recorder = createTranscriptRecorder({
+    runId,
+    chainFamily: input.identity?.chain?.startsWith("stellar") ? "stellar" : "evm",
+    network: input.identity?.chain ?? "legacy-evm",
+    assetIdentity: { asset: input.identity?.symbol ?? "portfolio" },
+    inputSnapshot: { mode: input.mode, walletAddress: input.walletAddress, identity: input.identity },
+  }, { enabled: process.env.AGENT_REPLAY_RECORDING === "1" });
   const results: AgentResult[] = [];
   let identityInput = input.identity;
   const candidateInputs: AgentInputIdentity[] = [];
@@ -201,6 +210,11 @@ export async function runAgentOrchestration(input: AgentOrchestrationInput): Pro
   }
 
   const partialStatus = getRunPartialStatus(results);
+  recorder.recordStage("observe", { mode: input.mode }, results.filter((result) => result.agent === "portfolio"));
+  recorder.recordStage("analyze", { resultCount: results.length }, results.map((result) => ({ agent: result.agent, riskScore: result.riskScore, confidence: result.confidence })));
+  recorder.recordStage("plan", { mode: input.mode }, decision.rawSignals?.executionPlan ?? null);
+  recorder.recordStage("decide", { mode: input.mode }, decision);
+  const transcript = recorder.finish({ decision, results });
 
   const runRecord = input.persistRun
     ? await createAgentRunRecord({
@@ -235,5 +249,6 @@ export async function runAgentOrchestration(input: AgentOrchestrationInput): Pro
     decision,
     partialStatus,
     runRecord,
+    transcript,
   };
 }

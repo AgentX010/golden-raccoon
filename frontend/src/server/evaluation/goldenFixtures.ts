@@ -20,6 +20,12 @@ export const goldenFixtureSuite = [
 
 export type GoldenFixtureName = (typeof goldenFixtureSuite)[number];
 
+/** Versioned, non-secret identities used by the offline replay check. */
+export const goldenTranscriptSet = [
+  { name: "evm_clean_wallet", chainFamily: "evm" as const, network: "testnet", asset: "USDC" },
+  { name: "stellar_clean_wallet", chainFamily: "stellar" as const, network: "stellar-testnet", asset: "XLM" },
+] as const;
+
 export const goldenScoreSnapshots: Record<GoldenFixtureName, { min: number; max: number; criticalNeverDowngrade?: boolean }> = {
   blue_chip_clean_token: { min: 0, max: 35 },
   verified_stablecoin: { min: 0, max: 25 },

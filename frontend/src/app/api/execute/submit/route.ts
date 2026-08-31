@@ -7,6 +7,9 @@ import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { resolveWalletSession } from "@/server/security/walletSession";
 import { submitTransaction } from "@/server/transactions/lifecycleManager";
+import { evaluateCapability } from "@/server/security/authz";
+
+export const AUTHZ_CAPABILITY = "execution:submit" as const;
 
 const bodySchema = z.object({
   chainFamily: z.enum(["evm", "stellar"]),
@@ -49,6 +52,13 @@ export async function POST(request: Request) {
   if (session.response) {
     return session.response;
   }
+
+  const authz = evaluateCapability(
+    { kind: "wallet", walletAddress: session.wallet, walletHash: "route", chainFamily: parsed.data.chainFamily, network: parsed.data.network.toLowerCase() },
+    AUTHZ_CAPABILITY,
+    { walletAddress: parsed.data.walletAddress, chainFamily: parsed.data.chainFamily, network: parsed.data.network },
+  );
+  if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
 
   const submitGate = gateFeature("execute_submit", parsed.data.walletAddress ?? "");
   if (!submitGate.enabled) {

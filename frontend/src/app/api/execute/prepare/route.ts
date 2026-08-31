@@ -9,12 +9,15 @@ import { withCacheHeaders } from "@/server/cache/strategy";
 import { buildExecutionPreviewFromPortfolio } from "@/server/agents/execution";
 import { getPortfolioSnapshot } from "@/server/portfolio/getPortfolio";
 import { assertApprovalOnly } from "@/server/security/policy";
+import { evaluateCapability, subjectFromRequest } from "@/server/security/authz";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { getUserRuleRecord } from "@/server/storage";
 import { assertPrepareAllowedByRecovery, getIncidentMode } from "@/server/recovery";
 import { prepareTransaction } from "@/server/transactions/lifecycleManager";
 import { getStellarNetwork } from "@/lib/stellar/config";
 import type { TransactionRecord, TransactionExpectedEffect, TransactionPreview } from "@/server/types";
+
+export const AUTHZ_CAPABILITY = "execution:prepare" as const;
 
 const simulationDetailSchema = z
   .object({
@@ -279,6 +282,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return jsonError({ code: "validation_error", message: "Invalid input", status: 400, details: parsed.error.flatten() });
   }
+
+  const authz = evaluateCapability(
+    subjectFromRequest(request, { chainFamily: parsed.data.network?.startsWith("stellar") ? "stellar" : "evm", network: parsed.data.network }),
+    AUTHZ_CAPABILITY,
+    { walletAddress: parsed.data.walletAddress, network: parsed.data.network },
+  );
+  if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
 
   const prepareGate = gateFeature("execute_prepare", parsed.data.walletAddress ?? "");
   if (!prepareGate.enabled) {
