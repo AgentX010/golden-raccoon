@@ -1,18 +1,42 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { useAccount } from "wagmi";
-import { useStellarWallet } from "@/providers/StellarWalletProvider";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   isWalletFamily,
   SELECTED_WALLET_FAMILY_KEY,
   type WalletFamily,
 } from "@/lib/wallet/session";
+import dynamic from "next/dynamic";
+import type { WalletSessionState } from "@/lib/wallet/build-session";
 
-type WalletSessionState = ReturnType<typeof buildWalletSession>;
+const WalletStack = dynamic(() => import("@/components/lazy/WalletStack"), {
+  loading: () => null,
+  ssr: false,
+});
 
-const WalletSessionContext = createContext<WalletSessionState | null>(null);
 const selectedFamilyChangedEvent = "golden-raccoon:selected-family-changed";
+const walletConnectRequestedEvent = "golden-raccoon:wallet-connect-requested";
+
+const defaultSession: WalletSessionState = {
+  family: null,
+  selectedFamily: null,
+  selectFamily: () => {},
+  address: undefined,
+  chain: undefined,
+  chainId: undefined,
+  walletType: undefined,
+  explorerUrl: undefined,
+  signerCapability: "unavailable",
+  isConnected: false,
+  isConnecting: false,
+  isRestored: false,
+  status: "disconnected",
+  connectedFamilies: { evm: false, stellar: false },
+  stellar: undefined,
+  evm: undefined,
+};
+
+const WalletSessionContext = createContext<WalletSessionState>(defaultSession);
 
 function subscribeToSelectedFamily(callback: () => void) {
   window.addEventListener(selectedFamilyChangedEvent, callback);
@@ -31,75 +55,45 @@ function getServerSelectedFamilySnapshot() {
   return null;
 }
 
-function buildWalletSession(
-  selectedFamily: WalletFamily | null,
-  selectFamily: (family: WalletFamily) => void,
-  stellar: ReturnType<typeof useStellarWallet>,
-  evm: ReturnType<typeof useAccount>,
-) {
-  const family = selectedFamily;
-  const selectedIsStellar = family === "stellar";
-  const selectedIsEvm = family === "evm";
-  const address = selectedIsStellar ? stellar.displayAddress : selectedIsEvm ? evm.address : undefined;
-  const isConnected = selectedIsStellar ? stellar.isConnected : selectedIsEvm ? evm.isConnected : false;
-  const isConnecting = selectedIsStellar
-    ? stellar.isConnecting
-    : selectedIsEvm && (evm.status === "connecting" || evm.status === "reconnecting");
-  const isRestored = selectedIsStellar && stellar.isRestored;
-  const evmExplorer = evm.chain?.blockExplorers?.default.url;
-
-  return {
-    family,
-    selectedFamily,
-    selectFamily,
-    address,
-    chain: selectedIsStellar ? stellar.network : selectedIsEvm ? evm.chain?.name : undefined,
-    chainId: selectedIsEvm ? evm.chainId : undefined,
-    walletType: selectedIsStellar ? stellar.walletName : selectedIsEvm ? evm.connector?.name : undefined,
-    explorerUrl: selectedIsStellar && stellar.network && address
-      ? `${stellar.network === "stellar-pubnet" ? "https://stellar.expert/explorer/public" : "https://stellar.expert/explorer/testnet"}/account/${address}`
-      : selectedIsEvm && address && evmExplorer
-        ? `${evmExplorer}/address/${address}`
-        : undefined,
-    signerCapability: selectedIsStellar
-      ? stellar.canSign ? "ready" : stellar.mismatchMessage ? "blocked" : stellar.isRestored ? "reconnect" : "unavailable"
-      : selectedIsEvm && evm.isConnected ? "ready" : "unavailable",
-    isConnected,
-    isConnecting,
-    isRestored,
-    status: isConnected ? "connected" : isConnecting ? "connecting" : isRestored ? "restored" : "disconnected",
-    connectedFamilies: {
-      evm: evm.isConnected,
-      stellar: stellar.isConnected,
-    },
-    stellar,
-    evm,
-  } as const;
-}
-
 export function WalletSessionProvider({ children }: { children: ReactNode }) {
-  const stellar = useStellarWallet();
-  const evm = useAccount();
+  const [session, setSession] = useState<WalletSessionState>(defaultSession);
+  const [walletLoaded, setWalletLoaded] = useState(false);
+
   const storedFamily = useSyncExternalStore(subscribeToSelectedFamily, getSelectedFamilySnapshot, getServerSelectedFamilySnapshot);
-  const selectedFamily = isWalletFamily(storedFamily)
-    ? storedFamily
-    : stellar.isConnected || stellar.isRestored
-      ? "stellar"
-      : evm.isConnected
-        ? "evm"
-        : null;
+  const selectedFamily = isWalletFamily(storedFamily) ? storedFamily : null;
 
   const selectFamily = useCallback((family: WalletFamily) => {
     window.localStorage.setItem(SELECTED_WALLET_FAMILY_KEY, family);
     window.dispatchEvent(new Event(selectedFamilyChangedEvent));
+    window.dispatchEvent(new Event(walletConnectRequestedEvent));
   }, []);
 
-  const value = useMemo(
-    () => buildWalletSession(selectedFamily, selectFamily, stellar, evm),
-    [evm, selectFamily, selectedFamily, stellar],
-  );
+  useEffect(() => {
+    const handleConnectRequest = () => setWalletLoaded(true);
+    window.addEventListener(walletConnectRequestedEvent, handleConnectRequest);
+    return () => window.removeEventListener(walletConnectRequestedEvent, handleConnectRequest);
+  }, []);
 
-  return <WalletSessionContext.Provider value={value}>{children}</WalletSessionContext.Provider>;
+  useEffect(() => {
+    if (selectedFamily) {
+      setWalletLoaded(true);
+    }
+  }, [selectedFamily]);
+
+  const value = useMemo(() => session, [session]);
+
+  return (
+    <WalletSessionContext.Provider value={value}>
+      {walletLoaded && (
+        <WalletStack
+          selectedFamily={selectedFamily}
+          selectFamily={selectFamily}
+          onSessionChange={setSession}
+        />
+      )}
+      {children}
+    </WalletSessionContext.Provider>
+  );
 }
 
 export function useWalletSessionContext() {
