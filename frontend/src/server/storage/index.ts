@@ -26,6 +26,7 @@ import type {
   AgentMissingData,
   DiscoveryClassification,
   RiskLevel,
+  NotificationPreferences,
 } from "@/server/types";
 import { getDefaultRules } from "@/server/rules/defaultRules";
 import { isTransactionHashForChain } from "@/lib/chainIdentity";
@@ -38,6 +39,8 @@ import {
   mirrorAlertRuleWrite,
   mirrorAlertUpdate,
   mirrorAlertWrite,
+  mirrorNotificationPreferencesDelete,
+  mirrorNotificationPreferencesWrite,
   deleteWalletDataFromPg,
   exportWalletDataFromPg,
   pruneExpiredRecordsFromPg,
@@ -62,6 +65,7 @@ export {
   pruneExpiredRecordsFromPg,
 };
 import { clearPortfolioCacheForWallet } from "@/server/stellar/portfolio";
+import { invalidatePortfolioForWallet, invalidateWalletCache } from "@/server/cache";
 import { resetDevEnvironment, seedDevEnvironment } from "./bootstrap";
 
 export const devReset = resetDevEnvironment;
@@ -82,6 +86,7 @@ export const devSeed = seedDevEnvironment;
   __goldenRaccoonAlertObservations?: AlertObservation[];
   __goldenRaccoonAlerts?: Alert[];
   __goldenRaccoonAlertDeliveries?: AlertDelivery[];
+  __goldenRaccoonNotificationPreferences?: NotificationPreferences[];
   __goldenRaccoonAgentRuns?: AgentRunRecord[];
   __goldenRaccoonRecommendations?: RecommendationRecord[];
   __goldenRaccoonTransactions?: TransactionRecord[];
@@ -187,6 +192,12 @@ function mirrorAlertUpdateDeferred(input: Alert) {
 function mirrorAlertDeliveryUpdateDeferred(input: AlertDelivery) {
   mirrorAlertDeliveryUpdate(input);
 }
+function mirrorNotificationPreferencesWriteDeferred(input: NotificationPreferences) {
+  mirrorNotificationPreferencesWrite(input);
+}
+function mirrorNotificationPreferencesDeleteDeferred(id: string) {
+  mirrorNotificationPreferencesDelete(id);
+}
 
 async function persistTransactionRecord(record: TransactionRecord) {
   if (!getPostgresStorageAdapter().isConfigured()) return;
@@ -251,6 +262,7 @@ export const storageSchemaContract = {
     "watchlist_entries",
     "watchlist_scan_runs",
     "discovery_alerts",
+    "authz_audit_entries",
   ],
   adapterApi: [
     "listAgentRunRecords",
@@ -368,6 +380,12 @@ function getAlertDeliveriesStore() {
   return memoryStore.__goldenRaccoonAlertDeliveries;
 }
 
+function getNotificationPreferencesStore() {
+  memoryStore.__goldenRaccoonNotificationPreferences ??= [];
+
+  return memoryStore.__goldenRaccoonNotificationPreferences;
+}
+
 function getWatchlistEntries() {
   memoryStore.__goldenRaccoonWatchlistEntries ??= [];
 
@@ -463,6 +481,7 @@ export function getStorageCounts(): StorageCounts {
     alertObservations: getAlertObservationsStore().length,
     alerts: getAlertsStore().length,
     alertDeliveries: getAlertDeliveriesStore().length,
+    notificationPreferences: getNotificationPreferencesStore().length,
   };
 }
 
@@ -634,6 +653,81 @@ export function updateAlertDelivery(id: string, walletAddress: string, patch: Pa
   mirrorAlertDeliveryUpdateDeferred(store[index]);
 
   return store[index];
+}
+
+// ------------- Notification preferences & routing (issue #152) -------------
+
+export type NotificationPreferenceScope = {
+  walletAddress: string;
+  chainFamily: "evm" | "stellar";
+  network: string;
+};
+
+/**
+ * Returns the stored preferences for a (wallet, chainFamily, network) scope,
+ * or `undefined` when none have been persisted yet.
+ */
+export function getNotificationPreferences(scope: NotificationPreferenceScope) {
+  const wallet = normalizeWallet(scope.walletAddress)!;
+  const network = scope.network ?? "legacy-evm";
+
+  return getNotificationPreferencesStore().find(
+    (pref) =>
+      pref.walletAddress === wallet &&
+      pref.chainFamily === scope.chainFamily &&
+      pref.network === network,
+  );
+}
+
+export function listNotificationPreferences(walletAddress?: string) {
+  return [...getNotificationPreferencesStore()]
+    .filter(withNormalizedWallet(walletAddress))
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+}
+
+/**
+ * Upserts a wallet's notification preferences for a chain scope. Creates a
+ * stable id on first insert and reflects the write to Postgres.
+ */
+export function upsertNotificationPreferences(input: NotificationPreferences) {
+  const now = new Date().toISOString();
+  const wallet = input.walletAddress.trim().toLowerCase();
+  const network = input.network || "legacy-evm";
+  const existingIndex = getNotificationPreferencesStore().findIndex(
+    (pref) =>
+      pref.walletAddress === wallet &&
+      pref.chainFamily === input.chainFamily &&
+      pref.network === network,
+  );
+
+  const record: NotificationPreferences = {
+    ...input,
+    id: existingIndex >= 0 ? getNotificationPreferencesStore()[existingIndex].id : `nfpref_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    walletAddress: wallet,
+    network,
+    updatedAt: now,
+  };
+
+  if (existingIndex >= 0) {
+    getNotificationPreferencesStore()[existingIndex] = record;
+  } else {
+    getNotificationPreferencesStore().unshift(record);
+  }
+  mirrorNotificationPreferencesWriteDeferred(record);
+
+  return record;
+}
+
+export function deleteNotificationPreferences(id: string) {
+  const store = getNotificationPreferencesStore();
+  const index = store.findIndex((pref) => pref.id === id);
+
+  if (index < 0) return false;
+
+  store.splice(index, 1);
+  mirrorNotificationPreferencesDeleteDeferred(id);
+
+  return true;
 }
 
 export function summarizeDeliveries(deliveries: AlertDelivery[]) {
@@ -817,6 +911,7 @@ export function createTransactionRecord(input: Omit<TransactionRecord, "createdA
 
   getTransactions().unshift(record);
   persistTransactionRecord(record);
+  if (record.walletAddress) invalidatePortfolioForWallet(record.walletAddress);
 
   return record;
 }
@@ -842,6 +937,7 @@ export function updateTransactionRecord(hash: string, updates: Partial<Omit<Tran
 
   list[existingIndex] = merged;
   persistTransactionUpdate(hash, updates);
+  if (merged.walletAddress) invalidatePortfolioForWallet(merged.walletAddress);
 
   return merged;
 }
@@ -905,7 +1001,7 @@ export function appendLifecycleEventByName(hash: string, event: TransactionLifec
 }
 
 export function isImmutableTerminal(status: TransactionLifecycleStatus) {
-  return status === "failed" || status === "replaced" || status === "dropped" || status === "expired" || status === "user_rejected";
+  return status === "confirmed" || status === "failed" || status === "replaced" || status === "dropped" || status === "expired" || status === "user_rejected";
 }
 
 export function listApprovalRecords(walletAddress?: string) {
@@ -1071,6 +1167,7 @@ export function addWatchlistEntry(input: CreateWatchlistInput): AddWatchlistEntr
 
   getWatchlistEntries().unshift(entry);
   mirrorWatchlistEntryWrite(entry);
+  invalidateWalletCache(entry.walletAddress);
 
   return { entry, alreadyExisted: false };
 }
@@ -1090,6 +1187,8 @@ export function removeWatchlistEntry(id: string) {
 
   if (removed > 0) {
     mirrorWatchlistEntryDeletion(id);
+    const removedEntry = store.find((entry) => entry.id === id);
+    if (removedEntry?.walletAddress) invalidateWalletCache(removedEntry.walletAddress);
   }
 
   return removed > 0;
@@ -1165,6 +1264,7 @@ export function updateWatchlistEntryLatestScan(
   entry.lastScannedAt = update.scannedAt;
   entry.latestScanRunId = update.scanRunId;
   entry.latestStatus = update.status === "failed" ? "stale" : update.status;
+  invalidateWalletCache(entry.walletAddress);
 
   if (update.status === "failed") {
     const hasPriorSuccess = entry.successfulScanRunIds && entry.successfulScanRunIds.length > 0;
@@ -1516,7 +1616,8 @@ export function addWatchlistEntriesBulk(inputs: CreateWatchlistInput[]): { appli
 
   if (added.length > 0) {
     existingStore.unshift(...added);
-    mirrorWatchlistEntryWriteBulk(added);
+  mirrorWatchlistEntryWriteBulk(added);
+  for (const entry of added) invalidateWalletCache(entry.walletAddress);
   }
 
   return { appliedCount: added.length };

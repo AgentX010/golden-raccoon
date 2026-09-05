@@ -709,6 +709,22 @@ create unique index if not exists alert_deliveries_idempotency_wallet_idx
   on alert_deliveries(wallet_address, idempotency_key)
   where idempotency_key is not null;
 
+-- Notification preferences & delivery routing (issue #152).
+-- One row per (wallet_address, chain_family, network) scope. The nested
+-- per-channel / quiet-hours / digest shape is stored as a JSONB blob so the
+-- typed model can evolve without a schema migration per field.
+create table if not exists notification_preferences (
+  id text primary key,
+  wallet_address text not null,
+  chain_family text not null default 'evm' check (chain_family in ('evm', 'stellar')),
+  network text not null default 'legacy-evm',
+  prefs jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists notification_preferences_wallet_idx
+  on notification_preferences(wallet_address, chain_family, network);
+
 -- Watchlist & discovery tables (upstream V3 discovery).
 create table if not exists watchlist_entries (
   id text primary key,
@@ -773,6 +789,22 @@ create table if not exists discovery_alerts (
 
 create index if not exists discovery_alerts_wallet_created_idx on discovery_alerts(wallet_address, created_at desc);
 create index if not exists discovery_alerts_entry_created_idx on discovery_alerts(entry_id, created_at desc);
+
+-- Capability decisions are append-only and retain only a one-way subject hash.
+create table if not exists authz_audit_entries (
+  id text primary key,
+  occurred_at timestamptz not null default now(),
+  subject_hash text not null,
+  subject_kind text not null check (subject_kind in ('anonymous', 'wallet')),
+  capability text not null,
+  resource_id text,
+  chain_family text check (chain_family in ('evm', 'stellar')),
+  network text,
+  decision text not null check (decision in ('allow', 'deny')),
+  reason text not null
+);
+
+create index if not exists authz_audit_subject_idx on authz_audit_entries(subject_hash, occurred_at desc);
 -- Watchlist portability (Issue #106)
 -- Bulk imports utilize the existing watchlist_entries schema.
 

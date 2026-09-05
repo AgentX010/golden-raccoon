@@ -12,6 +12,9 @@
     "deploy:check": "node scripts/check-deploy-readiness.mjs",
     "test:agents": "npm --prefix frontend run test:agents",
     "test:auto-mode": "npm --prefix frontend run test:auto-mode",
+    "test:auto-mode-sandbox": "npm --prefix frontend run test:auto-mode-sandbox",
+    "test:authz-coverage": "npm --prefix frontend run test:authz-coverage",
+    "test:agent-replay": "npm --prefix frontend run test:agent-replay",
     "test:stellar-config": "npm --prefix frontend run test:stellar-config",
     "test:simulation": "npm --prefix frontend run test:simulation",
     "test:recovery": "npm --prefix frontend run test:recovery",
@@ -38,7 +41,8 @@
     "retention:purge": "node scripts/retention-purge.mjs",
     "retention:purge:dry": "DRY_RUN=true node scripts/retention-purge.mjs",
     "test:erasure-residue": "npm --prefix frontend run test:erasure-residue",
-    "test:privacy": "npm --prefix frontend run test:privacy"
+    "test:privacy": "npm --prefix frontend run test:privacy",
+    "test:e2e": "npm --prefix frontend run test:e2e"
   },
   "dependencies": {
     "next": "16.3.2",

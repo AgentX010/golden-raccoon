@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import type {
   AgentRunRecord,
   AlertDelivery,
+  NotificationPreferences,
   RecommendationRecord,
   TransactionRecord,
   TransactionObservation,
@@ -448,6 +449,87 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     return data ? rowToAlertDelivery(data as Record<string, unknown>) : null;
   }
 
+  // ─── Notification preferences ──────────────────────────────────
+
+  async getNotificationPreferences(scope: {
+    walletAddress: string;
+    chainFamily: "evm" | "stellar";
+    network: string;
+  }): Promise<NotificationPreferences | null> {
+    const s = isStellarIdentifier(scope.walletAddress);
+    const walletAddress = preserveChainIdentity(scope.walletAddress, s);
+    const { data, error } = await this.client
+      .from("notification_preferences")
+      .select("*")
+      .eq("wallet_address", walletAddress)
+      .eq("chain_family", scope.chainFamily)
+      .eq("network", scope.network || "legacy-evm")
+      .maybeSingle();
+
+    if (error) throw new StorageError("getNotificationPreferences", error);
+    if (!data) return null;
+
+    const row = data as Record<string, unknown>;
+    const prefs = (row.prefs ?? {}) as Record<string, unknown>;
+
+    return {
+      id: typeof row.id === "string" ? row.id : undefined,
+      walletAddress: scope.walletAddress,
+      chainFamily: scope.chainFamily,
+      network: (row.network as string) || "legacy-evm",
+      channels: (prefs.channels ?? {}) as NotificationPreferences["channels"],
+      quietHours: (prefs.quietHours ?? { enabled: false, start: "22:00", end: "07:00", timeZone: "UTC" }) as NotificationPreferences["quietHours"],
+      digestCadence: (prefs.digestCadence ?? "off") as NotificationPreferences["digestCadence"],
+      dedupeWindowMinutes: (prefs.dedupeWindowMinutes ?? 30) as number,
+      updatedAt: typeof row.updated_at === "string" ? row.updated_at : new Date().toISOString(),
+    };
+  }
+
+  async upsertNotificationPreferences(prefs: NotificationPreferences): Promise<NotificationPreferences> {
+    const s = isStellarIdentifier(prefs.walletAddress);
+    const walletAddress = preserveChainIdentity(prefs.walletAddress, s);
+    const network = prefs.network || "legacy-evm";
+    const payload = {
+      channels: prefs.channels,
+      quietHours: prefs.quietHours,
+      digestCadence: prefs.digestCadence,
+      dedupeWindowMinutes: prefs.dedupeWindowMinutes,
+    };
+
+    const existing = await this.client
+      .from("notification_preferences")
+      .select("*")
+      .eq("wallet_address", walletAddress)
+      .eq("chain_family", prefs.chainFamily)
+      .eq("network", network)
+      .maybeSingle();
+    if (existing.error) throw new StorageError("upsertNotificationPreferences", existing.error);
+
+    const id = prefs.id ?? existing.data?.id ?? `nfpref_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const record = {
+      id,
+      wallet_address: walletAddress,
+      chain_family: prefs.chainFamily,
+      network,
+      prefs: payload,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await this.client
+      .from("notification_preferences")
+      .upsert(record, { onConflict: "id" });
+
+    if (error) throw new StorageError("upsertNotificationPreferences", error);
+
+    return {
+      ...prefs,
+      id,
+      walletAddress: prefs.walletAddress,
+      network,
+      updatedAt: record.updated_at,
+    };
+  }
+
   // ─── Health & counts ─────────────────────────────────────────────
 
   async getStorageHealth(): Promise<StorageHealth> {
@@ -484,7 +566,7 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
   }
 
   async getStorageCounts(): Promise<StorageCounts> {
-    const [agentRuns, recommendations, transactions, approvals, userRules, x402Receipts, alertRules, alertObservations, alerts, alertDeliveries] =
+    const [agentRuns, recommendations, transactions, approvals, userRules, x402Receipts, alertRules, alertObservations, alerts, alertDeliveries, notificationPreferences] =
       await Promise.all([
         this.client.from("agent_runs").select("*", { count: "exact", head: true }),
         this.client.from("recommendations").select("*", { count: "exact", head: true }),
@@ -496,6 +578,7 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
         this.client.from("alert_observations").select("*", { count: "exact", head: true }),
         this.client.from("alerts").select("*", { count: "exact", head: true }),
         this.client.from("alert_deliveries").select("*", { count: "exact", head: true }),
+        this.client.from("notification_preferences").select("*", { count: "exact", head: true }),
       ]);
 
     return {
@@ -509,6 +592,7 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
       alertObservations: alertObservations.count ?? 0,
       alerts: alerts.count ?? 0,
       alertDeliveries: alertDeliveries.count ?? 0,
+      notificationPreferences: notificationPreferences.count ?? 0,
     };
   }
 

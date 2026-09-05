@@ -105,19 +105,24 @@ function verdictLabel(verdict?: RiskReportVerdict) {
 }
 
 function riskTone(score: number) {
-  if (score >= 75) return "border-red-400/25 bg-red-500/10 text-red-100";
-  if (score >= 50) return "border-orange-300/25 bg-orange-400/10 text-orange-100";
-  if (score >= 25) return "border-[#d9a441]/25 bg-[#d9a441]/10 text-[#f2c86d]";
+  if (score >= 75) return "risk-tone-critical";
+  if (score >= 50) return "risk-tone-high";
+  if (score >= 25) return "risk-tone-medium";
+  return "risk-tone-low";
+}
 
-  return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+function riskLevelLabel(score: number) {
+  if (score >= 75) return "Critical risk";
+  if (score >= 50) return "High risk";
+  if (score >= 25) return "Medium risk";
+  return "Low risk";
 }
 
 function factorTone(factor: ScoreFactor) {
-  if (factor.severity === "critical") return "border-red-400/25 bg-red-500/12 text-red-100";
-  if (factor.severity === "high") return "border-orange-300/20 bg-orange-400/10 text-orange-100";
-  if (factor.direction === "risk_decrease") return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
-
-  return "border-white/8 bg-black/20 text-white/56";
+  if (factor.severity === "critical") return "risk-tone-critical";
+  if (factor.severity === "high") return "risk-tone-high";
+  if (factor.direction === "risk_decrease") return "risk-tone-low";
+  return "border-[var(--color-border)] bg-[var(--color-glass-bg)] text-muted";
 }
 
 function formatMetaValue(value: string | number | boolean | null | undefined) {
@@ -394,10 +399,10 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
             <select
               value={chain}
               onChange={(event) => setChain(event.target.value)}
-              className="h-12 rounded-full border border-white/10 bg-white/7 px-4 text-sm text-white outline-none transition focus:border-[#d9a441]/60"
+              className="h-12 rounded-full input-surface h-12 rounded-full border px-4 text-sm outline-none transition"
             >
               {chains.map((item) => (
-                <option key={item.value} value={item.value} disabled={item.disabled} className="bg-[#101010] text-white">
+                <option key={item.value} value={item.value} disabled={item.disabled} className="bg-dropdown text-foreground">
                   {item.label}
                 </option>
               ))}
@@ -409,13 +414,13 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
               aria-label="DexScreener URL or contract address"
               aria-invalid={Boolean(scanError)}
               aria-describedby={scanError ? queryErrorId : undefined}
-              className="h-12 min-w-0 flex-1 rounded-full border border-white/10 bg-white/7 px-5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#d9a441]/60"
+              className="h-12 min-w-0 flex-1 rounded-full input-surface h-12 rounded-full border px-5 text-sm outline-none transition"
             />
             <button
               type="button"
               onClick={runScan}
               disabled={isBusy || actionsDisabled}
-              className="h-12 rounded-full bg-[#d9a441] px-6 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-12 rounded-full bg-brand px-6 text-sm font-semibold text-[var(--color-fg-inverse)] transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isScanning && !isPaymentWorking ? "Running token agents..." : "Run token agents"}
             </button>
@@ -423,7 +428,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
               type="button"
               onClick={runDetailedScan}
               disabled={isBusy || actionsDisabled}
-              className="h-12 rounded-full border border-[#d9a441]/45 px-6 text-sm font-semibold text-[#f2c86d] transition hover:border-[#d9a441] hover:bg-[#d9a441]/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-12 rounded-full border border-brand px-6 text-sm font-semibold text-brand-muted transition hover:border-brand hover:bg-brand-subtle disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPaymentWorking ? "Processing..." : "Run deep scan agents"}
             </button>
@@ -432,17 +437,17 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
             value={walletAddress}
             onChange={(event) => setWalletAddress(event.target.value)}
             placeholder="Optional wallet address for portfolio exposure"
-            className="mt-3 h-12 w-full rounded-full border border-white/10 bg-white/7 px-5 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-[#d9a441]/60"
+            className="mt-3 h-12 w-full rounded-full input-surface h-12 rounded-full border px-5 text-sm outline-none transition"
           />
           <div className="mt-3 text-xs text-white/42">Free Trial is free. Detailed Scan costs {paymentTerms?.priceUsd ?? "$0.99"}.</div>
       </section>
 
       {showPaymentPanel ? (
-        <section className="overflow-hidden rounded-lg border border-[#d9a441]/25 bg-[#d9a441]/8">
+        <section className="overflow-hidden rounded-lg border border-brand bg-brand-subtle">
           <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
             <div className="p-6">
               <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-[#d9a441]/12 p-3 text-[#d9a441]">
+                <div className="rounded-2xl bg-brand-subtle p-3 text-brand">
                   {premiumStatus === "verified" ? <CheckCircle2 className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
                 </div>
                 <div className="min-w-0">
@@ -459,7 +464,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                       type="button"
                       onClick={preparePremiumScan}
                       disabled={isPaymentWorking || actionsDisabled}
-                      className="inline-flex h-11 items-center justify-center rounded-full bg-[#d9a441] px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-[var(--color-fg-inverse)] transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Continue detailed scan
                     </button>
@@ -468,10 +473,10 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
               ) : null}
             </div>
 
-            <div className="border-t border-[#d9a441]/18 bg-black/18 p-6 lg:border-l lg:border-t-0">
+            <div className="border-t border-brand bg-[var(--color-glass-bg)] p-6 lg:border-l lg:border-t-0">
               <div className="rounded-2xl bg-black/22 p-4">
                 <div className="flex items-center gap-2 text-sm text-white/52">
-                  <CreditCard className="h-4 w-4 text-[#d9a441]" />
+                  <CreditCard className="h-4 w-4 text-brand" />
                   x402 payment
                 </div>
                 <div className="mt-4 text-4xl font-semibold text-white">{paymentTerms?.priceUsd ?? "Price loading"}</div>
@@ -487,7 +492,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                 type="button"
                 onClick={preparePremiumScan}
                 disabled={isPaymentWorking || premiumStatus === "verified" || actionsDisabled}
-                className="mt-4 h-12 w-full rounded-full bg-[#d9a441] px-5 text-sm font-semibold text-black transition hover:bg-[#f2c86d] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 h-12 w-full rounded-full bg-brand px-5 text-sm font-semibold text-[var(--color-fg-inverse)] transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {premiumStatus === "verified" ? "Payment verified" : isPaymentWorking ? "Processing..." : "Pay and Run Detailed Scan"}
               </button>
@@ -497,8 +502,8 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
       ) : null}
 
       {isScanning ? (
-        <section className="flex items-center gap-3 rounded-lg border border-[#d9a441]/20 bg-[#d9a441]/8 p-4">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#d9a441]" />
+        <section className="flex items-center gap-3 rounded-lg border border-brand bg-brand-subtle p-4">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
           <div className="text-sm text-white/68">Analyzing token risk...</div>
         </section>
       ) : null}
@@ -514,6 +519,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
           <div className="space-y-5">
             <div className={`rounded-[28px] border p-6 ${riskTone(report?.buyRisk ?? scan.overallRiskScore)}`}>
               <div className="text-sm uppercase tracking-[0.18em] opacity-75">AI Risk Report</div>
+              <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em]">{riskLevelLabel(report?.buyRisk ?? scan.overallRiskScore)}</div>
               <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="text-4xl font-semibold">{scan.symbol}</h2>
@@ -620,7 +626,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                         ))}
                       </div>
                       {card.missingData.length ? (
-                        <div className="mt-3 rounded-xl border border-[#d9a441]/25 bg-[#d9a441]/8 px-3 py-2 text-xs leading-5 text-[#f2c86d]">
+                        <div className="mt-3 rounded-xl border border-brand bg-brand-subtle px-3 py-2 text-xs leading-5 text-brand-muted">
                           Missing data: {card.missingData.map((item) => item.field).join(", ")}
                         </div>
                       ) : null}
@@ -655,7 +661,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                   ))}
                 </div>
                 {executionPreview.blockedReason ? (
-                  <div className="mt-4 rounded-2xl border border-orange-300/25 bg-orange-400/10 p-4 text-sm leading-6 text-orange-100">
+                  <div className="mt-4 rounded-2xl risk-tone-high p-4 text-sm leading-6">
                     Executable transaction unavailable: {executionPreview.blockedReason}
                   </div>
                 ) : null}
@@ -726,7 +732,7 @@ export function TokenScanClient({ initialQuery = "MEME" }: { initialQuery?: stri
                   ))}
                 </div>
                 {scan.dataQuality.mockSources > 0 ? (
-                  <div className="mt-4 rounded-2xl border border-orange-300/25 bg-orange-400/10 p-4 text-sm leading-6 text-orange-100">
+                  <div className="mt-4 rounded-2xl risk-tone-high p-4 text-sm leading-6">
                     Demo/mock data is present and explicitly counted here. It must not be treated as live production evidence.
                   </div>
                 ) : null}

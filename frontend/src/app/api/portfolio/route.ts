@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { withCacheHeaders } from "@/server/cache/strategy";
+import { portfolioCacheKey, serverCache, walletCacheTag, resourceCacheTag, getOrLoad } from "@/server/cache";
+import { withCacheHeaders, withCacheStatus } from "@/server/cache/strategy";
 import { getPortfolioSnapshot } from "@/server/portfolio/getPortfolio";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { anyWalletAddressSchema, chainIdSchema, validateWalletAddressForChain } from "@/server/security/inputValidation";
@@ -30,7 +31,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { portfolio } = await getPortfolioSnapshot(parsed.data.walletAddress, parsed.data.chain);
+  const chainFamily = parsed.data.chain?.startsWith("stellar") ? "stellar" : "evm";
+  const cached = await getOrLoad({
+    store: serverCache,
+    key: portfolioCacheKey({ chainFamily, network: parsed.data.chain ?? "legacy-evm", walletAddress: parsed.data.walletAddress, params: { chain: parsed.data.chain } }),
+    loader: async () => (await getPortfolioSnapshot(parsed.data.walletAddress, parsed.data.chain)).portfolio,
+    ttlMs: 45_000,
+    staleMs: 45_000,
+    tags: [resourceCacheTag("portfolio"), parsed.data.walletAddress ? walletCacheTag(parsed.data.walletAddress) : "anonymous"],
+  });
 
-  return withCacheHeaders(NextResponse.json(portfolio), "portfolio");
+  if (cached.state === "negative") {
+    return NextResponse.json({ error: "portfolio_unavailable" }, { status: 503 });
+  }
+
+  return withCacheStatus(withCacheHeaders(NextResponse.json(cached.value), "portfolio"), cached.state);
 }

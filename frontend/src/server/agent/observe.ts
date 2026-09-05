@@ -1,5 +1,6 @@
 import type { AgentStep, PortfolioSnapshot } from "../types";
 import { getDiscoveredCandidates, isDiscoveryInitialized } from "../discovery";
+import type { TranscriptRecorder } from "../evaluation/harness";
 
 export function observePortfolio(portfolio: PortfolioSnapshot): AgentStep {
   const riskyToken = [...portfolio.holdings].sort((a, b) => b.riskScore - a.riskScore)[0];
@@ -10,6 +11,10 @@ export function observePortfolio(portfolio: PortfolioSnapshot): AgentStep {
     status: "complete",
     detail: `Read ${portfolio.holdings.length} holdings and detected elevated ${riskyToken?.symbol ?? "token"} exposure.`,
   };
+}
+
+export function recordObserveStage(recorder: TranscriptRecorder | undefined, portfolio: PortfolioSnapshot, step: AgentStep) {
+  recorder?.recordStage("observe", { holdings: portfolio.holdings.length }, step);
 }
 
 /**

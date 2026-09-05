@@ -32,7 +32,9 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
   const markerAngle = -90 + boundedScore * 1.8;
   const marker = polarToCartesian(100, 100, 74, markerAngle);
   const markerStem = polarToCartesian(100, 100, 58, markerAngle);
-  const markerColor = boundedScore >= 71 ? "#ff6b6b" : boundedScore >= 41 ? "#f2c86d" : "#60d394";
+  const markerColor =
+    level === "High" ? "var(--color-risk-high)" : level === "Medium" ? "var(--color-risk-medium)" : "var(--color-risk-low)";
+  const levelToneClass = level === "High" ? "risk-tone-high" : level === "Medium" ? "risk-tone-medium" : "risk-tone-low";
   const signals = getPortfolioRiskSignals(holdings);
   const categories = [
     { label: "Concentration", score: signals.concentrationRisk, weight: 30 },
@@ -60,14 +62,14 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
     <section className="glass-panel relative flex h-full flex-col rounded-[28px] p-6">
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm text-white/54">
+          <div className="flex items-center gap-2 text-sm text-muted">
             Portfolio risk
             {holdings.length > 0 ? (
               <button
                 ref={toggleButtonRef}
                 type="button"
                 onClick={() => setShowBreakdown((visible) => !visible)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-white/46 transition hover:bg-white/8 hover:text-white"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-subtle transition hover:bg-[var(--color-nav-hover-bg)] hover:text-[var(--color-fg)]"
                 aria-label="Show risk score breakdown"
                 aria-expanded={showBreakdown}
               >
@@ -77,11 +79,9 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
           </div>
           <div className="mt-1 text-4xl font-semibold">{boundedScore}/100</div>
         </div>
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/7 px-3 py-1 text-xs font-medium"
-          style={{ color: markerColor }}
-        >
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${levelToneClass}`}>
           <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: markerColor }} />
+          <span aria-hidden="true">{level === "High" ? "▲" : level === "Medium" ? "●" : "▼"}</span>
           Risk level: {level}
         </span>
       </div>
@@ -94,11 +94,11 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
           onKeyDown={(event) => {
             if (event.key === "Escape") closeBreakdown();
           }}
-          className="absolute inset-x-5 top-24 z-10 rounded-lg border border-white/12 bg-[#0b0b0b] p-4 shadow-2xl"
+          className="absolute inset-x-5 top-24 z-10 rounded-lg border border-[var(--color-border-strong)] bg-panel p-4 shadow-2xl"
         >
           <div className="flex items-center justify-between gap-3">
             <div id={headingId} className="text-sm font-semibold">Why {boundedScore}/100?</div>
-            <button ref={closeButtonRef} type="button" onClick={closeBreakdown} className="touch-target rounded-full text-white/46 hover:bg-white/8 hover:text-white" aria-label="Close risk breakdown">
+            <button ref={closeButtonRef} type="button" onClick={closeBreakdown} className="touch-target rounded-full text-subtle hover:bg-[var(--color-nav-hover-bg)] hover:text-[var(--color-fg)]" aria-label="Close risk breakdown">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -106,7 +106,7 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
             {categories.map((category) => (
               <div key={category.label} className="grid grid-cols-[1fr_5rem] items-center gap-3 text-xs">
                 <div>
-                  <div className="flex justify-between gap-3 text-white/62">
+                  <div className="flex justify-between gap-3 text-muted">
                     <span>{category.label}</span>
                     <span>{category.weight}% weight</span>
                   </div>
@@ -116,16 +116,16 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
                     aria-valuenow={category.score}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10"
+                    className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--color-gauge-track)]"
                   >
-                    <div className="h-full rounded-full bg-[#d9a441]" style={{ width: `${category.score}%` }} />
+                    <div className="h-full rounded-full bg-brand" style={{ width: `${category.score}%` }} />
                   </div>
                 </div>
-                <div className="text-right font-semibold text-white">{category.score}/100</div>
+                <div className="text-right font-semibold text-foreground">{category.score}/100</div>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs leading-5 text-white/38">Overall risk uses the category weights above and portfolio safety floors.</p>
+          <p className="mt-3 text-xs leading-5 text-subtle">Overall risk uses the category weights above and portfolio safety floors.</p>
         </div>
       ) : null}
 
@@ -138,30 +138,30 @@ export function RiskScoreCard({ score, holdings = [] }: { score: number; holding
         >
           <defs>
             <linearGradient id="riskGaugeGradient" x1="24" x2="176" y1="100" y2="100" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#60d394" />
-              <stop offset="50%" stopColor="#f2c86d" />
-              <stop offset="100%" stopColor="#ff6b6b" />
+              <stop offset="0%" stopColor="var(--color-risk-low)" />
+              <stop offset="50%" stopColor="var(--color-risk-medium)" />
+              <stop offset="100%" stopColor="var(--color-risk-high)" />
             </linearGradient>
           </defs>
-          <path d={arcPath(-90, 90)} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="16" strokeLinecap="round" />
+          <path d={arcPath(-90, 90)} fill="none" stroke="var(--color-gauge-track)" strokeWidth="16" strokeLinecap="round" />
           <path d={arcPath(-90, 90)} fill="none" stroke="url(#riskGaugeGradient)" strokeWidth="16" strokeLinecap="round" />
-          <line x1={markerStem.x} y1={markerStem.y} x2={marker.x} y2={marker.y} stroke="#050505" strokeWidth="4" strokeLinecap="round" />
-          <circle cx={marker.x} cy={marker.y} r="9" fill="#fff" stroke="#050505" strokeWidth="3" />
+          <line x1={markerStem.x} y1={markerStem.y} x2={marker.x} y2={marker.y} stroke="var(--color-gauge-marker-stem)" strokeWidth="4" strokeLinecap="round" />
+          <circle cx={marker.x} cy={marker.y} r="9" fill="var(--color-gauge-marker-ring)" stroke="var(--color-gauge-marker-stem)" strokeWidth="3" />
           <circle cx={marker.x} cy={marker.y} r="4" fill={markerColor} />
-          <text x="100" y="78" textAnchor="middle" className="fill-white text-4xl font-semibold">
+          <text x="100" y="78" textAnchor="middle" fill="var(--color-fg)" className="text-4xl font-semibold">
             {boundedScore}
           </text>
-          <text x="100" y="106" textAnchor="middle" className="fill-white/45 text-sm">
+          <text x="100" y="106" textAnchor="middle" fill="var(--color-fg-muted)" className="text-sm">
             {level} risk
           </text>
-          <text x="26" y="124" textAnchor="middle" className="fill-white/32 text-xs">
-            Low
+          <text x="26" y="124" textAnchor="middle" fill="var(--color-fg-subtle)" className="text-xs">
+            ▼ Low
           </text>
-          <text x="100" y="124" textAnchor="middle" className="fill-white/32 text-xs">
-            Medium
+          <text x="100" y="124" textAnchor="middle" fill="var(--color-fg-subtle)" className="text-xs">
+            ● Medium
           </text>
-          <text x="174" y="124" textAnchor="middle" className="fill-white/32 text-xs">
-            High
+          <text x="174" y="124" textAnchor="middle" fill="var(--color-fg-subtle)" className="text-xs">
+            ▲ High
           </text>
         </svg>
       </div>

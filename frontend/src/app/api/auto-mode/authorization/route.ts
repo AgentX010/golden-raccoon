@@ -8,6 +8,9 @@ import {
 import { withCacheHeaders } from "@/server/cache/strategy";
 import { checkRateLimitProfile } from "@/server/security/rateLimit";
 import { resolveWalletSession } from "@/server/security/walletSession";
+import { evaluateCapability } from "@/server/security/authz";
+
+export const AUTHZ_CAPABILITY = "auto-mode:authorize" as const;
 
 const authorizationSchema = z.discriminatedUnion("action", [
   z.object({
@@ -53,6 +56,12 @@ export async function POST(request: NextRequest) {
   });
   if (session.response) return session.response;
   const wallet = session.wallet!;
+  const authz = evaluateCapability(
+    { kind: "wallet", walletAddress: wallet, walletHash: "route" },
+    AUTHZ_CAPABILITY,
+    { walletAddress: wallet },
+  );
+  if (!authz.allowed) return NextResponse.json({ error: "auth_error", reason: authz.reason }, { status: 403 });
 
   try {
     if (parsed.data.action === "authorize") {

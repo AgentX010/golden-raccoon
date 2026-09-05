@@ -1,4 +1,5 @@
 import type { AutoModeContractVerification } from "@/server/autoMode/policy";
+import { getKillSwitchState, type KillSwitchScope, type KillSwitchStore } from "@/server/autoMode/sandbox/killSwitch";
 
 export type AutoModeActivationPrerequisites = {
   ready: boolean;
@@ -74,4 +75,10 @@ export function getAutoModeActivationPrerequisites(): AutoModeActivationPrerequi
       "dependency:#33:signed_policy_authorization",
     ],
   };
+}
+
+/** Every automated decision point can use this fail-closed gate. */
+export async function getAutoModeAutomationGate(scope: KillSwitchScope, store?: KillSwitchStore) {
+  const state = await getKillSwitchState(scope, store);
+  return { allowed: !state.engaged, state, reason: state.engaged ? state.reason ?? "kill_switch_engaged" : undefined };
 }

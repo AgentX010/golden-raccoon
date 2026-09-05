@@ -6,6 +6,7 @@ import { withCacheHeaders } from "@/server/cache/strategy";
 import { runTokenScan } from "@/server/scan/tokenScan";
 import { checkRateLimit } from "@/server/security/rateLimit";
 import { buildServerTimingHeader, createPhaseTimer, recordApiTiming } from "@/server/observability/timing";
+import { createCacheKey, getOrLoad, serverCache, walletCacheTag, resourceCacheTag } from "@/server/cache";
 
 const bodySchema = z.object({
   query: z.string().min(1).max(260),
@@ -39,12 +40,23 @@ export async function POST(request: Request) {
   }
 
   const timer = createPhaseTimer();
-  const result = await runTokenScan(parsed.data.query, parsed.data.chain, parsed.data.walletAddress, timer);
+  const chainFamily = parsed.data.chain?.startsWith("stellar") ? "stellar" : "evm";
+  const cached = await getOrLoad({
+    store: serverCache,
+    key: createCacheKey({ chainFamily, network: parsed.data.chain ?? "legacy-evm", walletAddress: parsed.data.walletAddress, resource: "scan", params: { query: parsed.data.query } }),
+    loader: () => runTokenScan(parsed.data.query, parsed.data.chain, parsed.data.walletAddress, timer),
+    ttlMs: 15_000,
+    staleMs: 30_000,
+    tags: [resourceCacheTag("scan"), parsed.data.walletAddress ? walletCacheTag(parsed.data.walletAddress) : "anonymous"],
+  });
+  if (cached.state === "negative") return jsonError({ code: "provider_timeout", message: "Scan provider is temporarily unavailable.", status: 503 });
+  const result = cached.value;
   const timing = timer.finish();
 
   recordApiTiming(API_TIMING_ROUTE, performance.now() - requestStartedAt);
 
   const response = withCacheHeaders(NextResponse.json({ ...result, timing }), "scan");
+  response.headers.set("X-Cache-Status", cached.state);
   response.headers.set("Server-Timing", buildServerTimingHeader(timing));
 
   return response;
