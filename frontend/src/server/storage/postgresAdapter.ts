@@ -40,6 +40,7 @@ import type {
   AlertRule,
   ChainFamily,
   DiscoveryClassification,
+  NotificationPreferences,
   TransactionLifecycleEvent,
   TransactionLifecycleStatus,
   TransactionRecord,
@@ -211,6 +212,11 @@ type PersistedAlertDelivery = Pick<
   | "attemptCount"
   | "createdAt"
   | "sentAt"
+>;
+
+type PersistedNotificationPreferences = Pick<
+  NotificationPreferences,
+  "id" | "walletAddress" | "chainFamily" | "network" | "channels" | "quietHours" | "digestCadence" | "dedupeWindowMinutes" | "updatedAt"
 >;
 
 class PostgresStorageAdapter {
@@ -641,6 +647,52 @@ class PostgresStorageAdapter {
     }
   }
 
+  private async doMirrorNotificationPreferences(prefs: PersistedNotificationPreferences): Promise<void> {
+    if (!this.pool) return;
+    const channels = prefs.channels ?? {};
+    const payload = {
+      channels,
+      quietHours: prefs.quietHours,
+      digestCadence: prefs.digestCadence,
+      dedupeWindowMinutes: prefs.dedupeWindowMinutes,
+    };
+    try {
+      await this.pool.query(
+        `INSERT INTO notification_preferences (id, wallet_address, chain_family, network, prefs, updated_at)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6)
+         ON CONFLICT (id) DO UPDATE SET
+           wallet_address = EXCLUDED.wallet_address,
+           chain_family = EXCLUDED.chain_family,
+           network = EXCLUDED.network,
+           prefs = EXCLUDED.prefs,
+           updated_at = EXCLUDED.updated_at`,
+        [
+          prefs.id,
+          prefs.walletAddress,
+          prefs.chainFamily,
+          prefs.network,
+          JSON.stringify(payload),
+          prefs.updatedAt,
+        ],
+      );
+      this.mirrorSuccessCount += 1;
+    } catch (error) {
+      this.mirrorFailureCount += 1;
+      this.lastError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  private async doDeleteNotificationPreferences(id: string): Promise<void> {
+    if (!this.pool) return;
+    try {
+      await this.pool.query("DELETE FROM notification_preferences WHERE id = $1", [id]);
+      this.mirrorSuccessCount += 1;
+    } catch (error) {
+      this.mirrorFailureCount += 1;
+      this.lastError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
   async mirrorAlertRule(rule: PersistedAlertRule): Promise<void> {
     if (!this.connectionString || !(await this.ensurePool())) return;
     await this.enqueueMirror(() => this.doMirrorAlertRule(rule));
@@ -659,6 +711,16 @@ class PostgresStorageAdapter {
   async mirrorAlertDelivery(delivery: PersistedAlertDelivery): Promise<void> {
     if (!this.connectionString || !(await this.ensurePool())) return;
     await this.enqueueMirror(() => this.doMirrorAlertDelivery(delivery));
+  }
+
+  async mirrorNotificationPreferences(prefs: PersistedNotificationPreferences): Promise<void> {
+    if (!this.connectionString || !(await this.ensurePool())) return;
+    await this.enqueueMirror(() => this.doMirrorNotificationPreferences(prefs));
+  }
+
+  async deleteMirrorNotificationPreferences(id: string): Promise<void> {
+    if (!this.connectionString || !(await this.ensurePool())) return;
+    await this.enqueueMirror(() => this.doDeleteNotificationPreferences(id));
   }
 
   async mirrorTransaction(record: TransactionRecord): Promise<void> {
@@ -1414,6 +1476,14 @@ export function mirrorAlertUpdate(alert: Alert): void {
 
 export function mirrorAlertDeliveryUpdate(delivery: AlertDelivery): void {
   mirrorAlertDeliveryWrite(delivery);
+}
+
+export function mirrorNotificationPreferencesWrite(prefs: NotificationPreferences): void {
+  void getPostgresStorageAdapter().mirrorNotificationPreferences(prefs);
+}
+
+export function mirrorNotificationPreferencesDelete(id: string): void {
+  void getPostgresStorageAdapter().deleteMirrorNotificationPreferences(id);
 }
 
 export async function deleteWalletDataFromPg(walletAddress: string, network?: string, chainFamily?: "evm" | "stellar") {

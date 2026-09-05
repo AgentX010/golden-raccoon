@@ -95,32 +95,28 @@ export const test = base.extend<MockFixtures>({
 
   setupWalletConnected: [
     async ({ page }, use) => {
-      const localStorage = {
-        "wagmi.store": JSON.stringify({
-          state: {
-            data: {
-              account: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-              chainId: 8453,
-            },
-          },
-        }),
-        "wallet-connected": "true",
-      };
-
-      await page.addInitScript((storage) => {
-        for (const [key, value] of Object.entries(storage)) {
-          if (typeof value === "string") {
-            window.localStorage.setItem(key, value);
-          }
-        }
-      }, localStorage);
+      const { installMockEvmWallet } = await import("./mockEvmWallet");
+      await installMockEvmWallet(page);
 
       await page.route("**/api/portfolio*", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockPortfolioSnapshot()) });
       });
 
       await page.route("**/api/wallet-session/**", async (route) => {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ nonce: "mock-nonce", challenge: "mock-challenge", challengeXdr: "AAAAA...", family: "evm", walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18", issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), network: null }) });
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            nonce: "mock-nonce",
+            challenge: "mock-challenge",
+            challengeXdr: "AAAAA...",
+            family: "evm",
+            walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+            issuedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 3600000).toISOString(),
+            network: null,
+          }),
+        });
       });
 
       await page.route("**/api/wallet-session", async (route) => {

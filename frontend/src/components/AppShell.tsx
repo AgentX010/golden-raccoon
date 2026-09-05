@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -15,39 +16,42 @@ const navItems = [
 ];
 
 const navLinkClassName =
-  "rounded-full px-4 py-2 text-sm text-white/64 transition hover:bg-white/8 hover:text-white focus-visible:bg-white/8 focus-visible:text-white";
+  "rounded-full px-4 py-2 text-sm text-[var(--color-nav-fg)] transition hover:bg-[var(--color-nav-hover-bg)] hover:text-[var(--color-fg)] focus-visible:bg-white/8 focus-visible:text-white";
 const mobileNavLinkClassName =
-  "shrink-0 rounded-full px-3 py-2 text-sm text-white/64 hover:bg-white/8 hover:text-white focus-visible:bg-white/8 focus-visible:text-white";
+  "shrink-0 rounded-full px-3 py-2 text-sm text-[var(--color-nav-fg)] hover:bg-[var(--color-nav-hover-bg)] hover:text-[var(--color-fg)] focus-visible:bg-white/8 focus-visible:text-white";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen overflow-hidden bg-[#050505] text-white">
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 border-b border-white/8 bg-[#050505]/78 backdrop-blur-2xl">
-        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-5 sm:px-8">
+      <header className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[var(--color-header-bg)] backdrop-blur-2xl">
+        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between gap-3 px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3">
             <Image
               src="/brand/logo.png"
               alt="Golden Raccoon guardian emblem"
               width={44}
               height={44}
-              className="rounded-2xl border border-white/10"
+              className="rounded-2xl border border-[var(--color-border)]"
               priority
             />
             <div>
-              <div className="text-sm font-semibold tracking-[0.18em] text-[#d9a441]">GOLDEN RACCOON</div>
+              <div className="text-sm font-semibold tracking-[0.18em] text-brand">GOLDEN RACCOON</div>
             </div>
           </Link>
-          <nav aria-label="Primary" className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 md:flex">
+          <nav aria-label="Primary" className="hidden items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-glass-bg)] p-1 md:flex">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} className={navLinkClassName}>
                 {item.label}
               </Link>
             ))}
           </nav>
-          <WalletConnectButton />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <WalletConnectButton />
+          </div>
         </div>
         {/*
           A second landmark cannot share the first one's name: a screen-reader
@@ -58,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav
           aria-label="Primary, compact"
           tabIndex={0}
-          className="mx-auto flex w-full max-w-7xl gap-1 overflow-x-auto px-5 pb-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9a441] md:hidden"
+          className="mx-auto flex w-full max-w-7xl gap-1 overflow-x-auto px-5 pb-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] md:hidden"
         >
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className={mobileNavLinkClassName}>

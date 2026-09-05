@@ -273,3 +273,19 @@ export function mockDefaultRules(): Record<string, number> {
     maxMemeExposurePercent: 15,
   };
 }
+
+export function mockStellarNativeScanResult(overrides?: Record<string, unknown>): Record<string, unknown> {
+  return mockStellarTokenScanResult({ id: "mock-scan-stellar-native", symbol: "XLM", name: "Stellar Lumens", summary: "Native XLM asset.", normalizedInput: { query: "native", chain: "stellar-testnet", source: "stellar", assetKey: "native" }, ...overrides });
+}
+export function mockStellarClassicAssetScanResult(overrides?: Record<string, unknown>): Record<string, unknown> {
+  return mockStellarTokenScanResult({ id: "mock-scan-stellar-classic", symbol: "USDC", name: "USD Coin", summary: "Classic asset.", normalizedInput: { query: "USDC:GBBD47IF6LWK7P7MDEVSC6547CCEE7SGZ6WWOKY3DBWECHSL44JE7QBJ", chain: "stellar-testnet", source: "stellar", assetKey: "USDC:GBBD47IF6LWK7P7MDEVSC6547CCEE7SGZ6WWOKY3DBWECHSL44JE7QBJ" }, ...overrides });
+}
+export function mockUnavailableProviderScanResult(overrides?: Record<string, unknown>): Record<string, unknown> {
+  const base = mockTokenScanResult();
+  return { ...base, dataQuality: { mode: "unavailable", connectedSources: 0, unavailableSources: 3, mockSources: 0, detail: "All providers unavailable." }, riskReport: { ...(base.riskReport as Record<string, unknown>), executionPreview: { title: "Suggested action: Monitor only", action: "monitor", requiresApproval: true, blockedReason: "Provider unavailable — cannot prepare an executable preview.", quote: { status: "unavailable" }, simulation: { status: "unavailable", warnings: [] }, audit: { serverCanSign: false, authorized: false } } }, ...overrides };
+}
+export function mockUnpricedAssetScanResult(overrides?: Record<string, unknown>): Record<string, unknown> {
+  const base = mockTokenScanResult();
+  return { ...base, riskReport: { ...(base.riskReport as Record<string, unknown>), executionPreview: { title: "Suggested action: Reduce exposure", action: "reduce_exposure", requiresApproval: true, blockedReason: "Trusted price unavailable — quote cannot be prepared safely.", quote: { status: "unavailable", detail: "price unavailable" }, simulation: { status: "unavailable", warnings: [] }, audit: { serverCanSign: false, authorized: false } } }, ...overrides };
+}
+

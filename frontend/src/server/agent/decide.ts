@@ -1,4 +1,5 @@
 import type { AgentDecision, AgentStep, PortfolioSnapshot } from "../types";
+import type { TranscriptRecorder } from "../evaluation/harness";
 
 export function decideAction(portfolio: PortfolioSnapshot): {
   step: AgentStep;
@@ -38,4 +39,8 @@ export function decideAction(portfolio: PortfolioSnapshot): {
     },
     decision,
   };
+}
+
+export function recordDecideStage(recorder: TranscriptRecorder | undefined, portfolio: PortfolioSnapshot, decision: AgentDecision) {
+  recorder?.recordStage("decide", { walletAddress: portfolio.walletAddress, riskScore: portfolio.riskScore }, decision);
 }

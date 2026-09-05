@@ -850,6 +850,99 @@
           }
         },
         "additionalProperties": true
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "required": [
+          "walletAddress",
+          "chainFamily",
+          "network",
+          "channels",
+          "quietHours",
+          "digestCadence",
+          "dedupeWindowMinutes",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "walletAddress": {
+            "type": "string"
+          },
+          "chainFamily": {
+            "$ref": "#/components/schemas/ChainFamily"
+          },
+          "network": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "enabled",
+                "minimumSeverity"
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "minimumSeverity": {
+                  "$ref": "#/components/schemas/RiskLevel"
+                },
+                "categories": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "quietHours": {
+            "type": "object",
+            "required": [
+              "enabled",
+              "start",
+              "end",
+              "timeZone"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "start": {
+                "type": "string",
+                "description": "HH:MM, 24h, in the configured time zone"
+              },
+              "end": {
+                "type": "string",
+                "description": "HH:MM, 24h, in the configured time zone"
+              },
+              "timeZone": {
+                "type": "string",
+                "description": "IANA time zone"
+              }
+            }
+          },
+          "digestCadence": {
+            "type": "string",
+            "enum": [
+              "off",
+              "hourly",
+              "daily",
+              "weekly"
+            ]
+          },
+          "dedupeWindowMinutes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
       }
     },
     "responses": {
@@ -5392,6 +5485,97 @@
         "responses": {
           "200": {
             "description": "Successful import"
+          }
+        }
+      }
+    },
+    "/alerts/preferences": {
+      "get": {
+        "operationId": "getNotificationPreferences",
+        "summary": "Read the session wallet's notification preferences for a chain scope (seeded with defaults on first read).",
+        "tags": [
+          "alerts"
+        ],
+        "security": [
+          {
+            "WalletSessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WalletAddressQuery"
+          },
+          {
+            "$ref": "#/components/parameters/ChainQuery"
+          },
+          {
+            "in": "query",
+            "name": "network",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Network scope for the preference record."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification preferences.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized401"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited429"
+          }
+        }
+      },
+      "put": {
+        "operationId": "putNotificationPreferences",
+        "summary": "Update the session wallet's notification preferences for a chain scope.",
+        "tags": [
+          "alerts"
+        ],
+        "security": [
+          {
+            "WalletSessionCookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated notification preferences.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized401"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited429"
           }
         }
       }

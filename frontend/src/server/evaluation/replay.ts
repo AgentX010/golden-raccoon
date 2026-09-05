@@ -1,4 +1,6 @@
 import type { AgentResult } from "@/server/types";
+import { diffTranscripts } from "./harness/diff";
+import type { AgentRunTranscript } from "./harness/transcript";
 
 export type ReplaySnapshot = {
   agent: AgentResult["agent"];
@@ -43,6 +45,14 @@ export function compareReplaySnapshot(snapshot: ReplaySnapshot, replayed: AgentR
   };
 }
 
+export function compareReplayTranscript(expected: AgentRunTranscript, replayed: AgentRunTranscript) {
+  if (expected.chainFamily !== replayed.chainFamily || expected.network !== replayed.network || expected.assetIdentity.asset !== replayed.assetIdentity.asset) {
+    return { compatible: false, migrationNote: "Replay identity drift detected; chain family, network, and asset must remain bound." };
+  }
+  const diff = diffTranscripts(expected, replayed);
+  return { compatible: diff.identical, differences: diff.differences, migrationNote: diff.identical ? undefined : "Replay drift detected; review the stage and field diff before accepting a changed baseline." };
+}
+
 /**
  * Stellar-specific replay snapshots registry.
  * Each entry records the expected deterministic outcome for a golden fixture.
@@ -51,7 +61,7 @@ export function compareReplaySnapshot(snapshot: ReplaySnapshot, replayed: AgentR
 export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "sourceSnapshotHash">> = {
   stellar_xlm: {
     agent: "onchain",
-    riskScore: 20,
+    riskScore: 6,
     recommendedAction: "hold",
     chainFamily: "stellar",
     fixtureName: "stellar_xlm",
@@ -59,7 +69,7 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   },
   stellar_known_classic: {
     agent: "onchain",
-    riskScore: 15,
+    riskScore: 10,
     recommendedAction: "hold",
     chainFamily: "stellar",
     fixtureName: "stellar_known_classic",
@@ -83,7 +93,7 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   },
   stellar_sep41: {
     agent: "onchain",
-    riskScore: 46,
+    riskScore: 32,
     recommendedAction: "watch",
     chainFamily: "stellar",
     fixtureName: "stellar_sep41",
@@ -92,15 +102,15 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   stellar_invalid_issuer: {
     agent: "onchain",
     riskScore: 74,
-    recommendedAction: "manual_review",
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_invalid_issuer",
     migrationNote: "Asset with unconfirmed issuer should be high/critical risk.",
   },
   stellar_unknown_contract: {
     agent: "onchain",
-    riskScore: 71,
-    recommendedAction: "manual_review",
+    riskScore: 75,
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_unknown_contract",
     migrationNote: "Contract address with no deployed code should be high/critical risk.",
@@ -108,10 +118,9 @@ export const stellarReplaySnapshots: Record<string, Omit<ReplaySnapshot, "source
   stellar_unavailable_provider: {
     agent: "onchain",
     riskScore: 77,
-    recommendedAction: "manual_review",
+    recommendedAction: "avoid",
     chainFamily: "stellar",
     fixtureName: "stellar_unavailable_provider",
     migrationNote: "Unavailable Stellar RPC should produce high risk with reduced confidence.",
   },
 };
-

@@ -1,161 +1,57 @@
 @import "tailwindcss";
-
-:root {
-  --background: #050505;
-  --foreground: #f7f4ed;
-}
+@import "../theme/tokens.css";
+@import "../theme/themes.css";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-brand: var(--color-brand);
+  --color-brand-hover: var(--color-brand-hover);
+  --color-brand-muted: var(--color-brand-muted);
+  --color-muted: var(--color-fg-muted);
+  --color-panel: var(--color-panel);
+  --color-modal: var(--color-modal);
+  --color-border: var(--color-border);
+  --color-focus: var(--color-focus);
+  --color-risk-low: var(--color-risk-low);
+  --color-risk-medium: var(--color-risk-medium);
+  --color-risk-high: var(--color-risk-high);
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-::selection {
-  background: #d9a441;
-  color: #050505;
-}
-
-.glass-panel {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 80px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(22px);
-}
-
-.gold-line {
-  background: linear-gradient(90deg, transparent, rgba(217, 164, 65, 0.85), transparent);
-}
-
-html[data-offline-locked="true"] button:not([data-offline-allow]),
-html[data-offline-locked="true"] input,
-html[data-offline-locked="true"] select,
-html[data-offline-locked="true"] textarea,
-html[data-offline-locked="true"] summary,
-html[data-offline-locked="true"] a[href^="/api"],
-html[data-offline-locked="true"] [data-state-changing] {
-  cursor: not-allowed !important;
-  opacity: 0.48 !important;
-  pointer-events: none !important;
-}
-
-/* Accessibility: visible keyboard focus indicator using the brand gold. */
-select:focus, :focus-visible {
-  outline: 3px solid #d9a441;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Skip link: hidden until it receives keyboard focus. */
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: 0.75rem;
-  z-index: 100;
-  padding: 0.75rem 1.25rem;
-  border-radius: 9999px;
-  background: #d9a441;
-  color: #050505;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: top 0.15s ease;
-}
-
-.skip-link:focus-visible,
-.skip-link:focus {
-  top: 0.75rem;
-  outline: 3px solid #f7f4ed;
-  outline-offset: 2px;
-}
-
-/* Accessibility: respect reduced-motion preference by disabling animations/transitions. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/*
- * Responsive and touch-target guardrails (issue #148).
- *
- * A wallet user typically operates from a phone, so the primary read path is
- * the one that degraded worst. These rules are deliberately global: relying on
- * every component to remember them is what produced the inconsistency.
- */
-
-:root {
-  /* WCAG 2.2 AA target size (minimum) is 24px; 44px is the comfortable
-     pointer target Apple and Google both recommend, and is what this app
-     enforces for its own controls. */
-  --touch-target-min: 44px;
-}
-
-/* The page body must never scroll sideways. Wide content scrolls inside its
-   own container — see components/layout/DataTable.tsx. */
-html,
-body {
-  overflow-x: hidden;
-  max-width: 100%;
-}
-
-/*
- * Every interactive control meets the minimum target.
- *
- * Applied by element rather than by utility class so a control added later is
- * covered by default. `min-height` and `min-width` do not stretch a control
- * that is already large enough, and inline-level controls inside prose are
- * exempt so a link in a sentence does not disturb the line box.
- */
-button,
-[role="button"],
-select,
-summary,
-input[type="checkbox"],
-input[type="radio"] {
-  min-height: var(--touch-target-min);
-  min-width: var(--touch-target-min);
-}
-
-/* Text inputs need the height, not the width. */
-input:not([type="checkbox"]):not([type="radio"]),
-textarea {
-  min-height: var(--touch-target-min);
-}
-
-/* An icon-only control has no text to give it size. */
-.touch-target {
-  min-height: var(--touch-target-min);
-  min-width: var(--touch-target-min);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Charts and media reflow within their container instead of overflowing. */
-svg,
-canvas,
-img,
-video {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Scroll is locked behind an open drawer or modal on small viewports, so the
-   background does not move under the overlay. */
-body[data-scroll-locked="true"] {
-  overflow: hidden;
-  touch-action: none;
-}
+body { background: var(--color-bg); color: var(--color-fg); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+::selection { background: var(--color-selection-bg); color: var(--color-selection-fg); }
+.glass-panel { border: 1px solid var(--color-glass-border); background: var(--color-glass-bg); box-shadow: inset 0 1px 0 var(--color-glass-highlight), 0 24px 80px var(--color-glass-shadow); backdrop-filter: blur(22px); }
+.gold-line { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-brand) 85%, transparent), transparent); }
+html[data-offline-locked="true"] button:not([data-offline-allow]), html[data-offline-locked="true"] input, html[data-offline-locked="true"] select, html[data-offline-locked="true"] textarea, html[data-offline-locked="true"] summary, html[data-offline-locked="true"] a[href^="/api"], html[data-offline-locked="true"] [data-state-changing] { cursor: not-allowed !important; opacity: 0.48 !important; pointer-events: none !important; }
+select:focus, :focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; border-radius: 4px; }
+.skip-link { position: absolute; top: -100%; left: 0.75rem; z-index: 100; padding: 0.75rem 1.25rem; border-radius: 9999px; background: var(--color-brand); color: var(--color-fg-inverse); font-size: 0.875rem; font-weight: 600; text-decoration: none; transition: top 0.15s ease; }
+.skip-link:focus-visible, .skip-link:focus { top: 0.75rem; outline: 3px solid var(--color-fg); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+:root { --touch-target-min: 44px; }
+html, body { overflow-x: hidden; max-width: 100%; }
+button, [role="button"], select, summary, input[type="checkbox"], input[type="radio"] { min-height: var(--touch-target-min); min-width: var(--touch-target-min); }
+input:not([type="checkbox"]):not([type="radio"]), textarea { min-height: var(--touch-target-min); }
+.touch-target { min-height: var(--touch-target-min); min-width: var(--touch-target-min); display: inline-flex; align-items: center; justify-content: center; }
+svg, canvas, img, video { max-width: 100%; height: auto; }
+body[data-scroll-locked="true"] { overflow: hidden; touch-action: none; }
+.text-brand { color: var(--color-brand); }
+.text-brand-muted { color: var(--color-brand-muted); }
+.bg-brand { background-color: var(--color-brand); }
+.bg-brand-subtle { background-color: var(--color-brand-subtle); }
+.border-brand { border-color: var(--color-brand-border); }
+.bg-panel { background-color: var(--color-panel); }
+.bg-modal { background-color: var(--color-modal); }
+.bg-dropdown { background-color: var(--color-dropdown); }
+.bg-tooltip { background-color: var(--color-tooltip); }
+.text-muted { color: var(--color-fg-muted); }
+.text-subtle { color: var(--color-fg-subtle); }
+.risk-tone-low { border-color: var(--color-risk-low-border); background-color: var(--color-risk-low-bg); color: var(--color-risk-low); }
+.risk-tone-medium { border-color: var(--color-risk-medium-border); background-color: var(--color-risk-medium-bg); color: var(--color-risk-medium); }
+.risk-tone-high { border-color: var(--color-risk-high-border); background-color: var(--color-risk-high-bg); color: var(--color-risk-high); }
+.risk-tone-critical { border-color: var(--color-risk-critical-border); background-color: var(--color-risk-critical-bg); color: var(--color-risk-critical); }
+.input-surface { border: 1px solid var(--color-border); background-color: var(--color-glass-bg); color: var(--color-fg); }
+.input-surface::placeholder { color: var(--color-fg-subtle); }
+.input-surface:focus { border-color: var(--color-brand-border); }
+.overlay-backdrop { background-color: var(--color-overlay); }

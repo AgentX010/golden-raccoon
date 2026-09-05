@@ -1,4 +1,5 @@
 import type { AgentDecision, AgentStep, PortfolioSnapshot, TransactionPreview } from "../types";
+import type { TranscriptRecorder } from "../evaluation/harness";
 
 export function planTransaction(
   portfolio: PortfolioSnapshot,
@@ -25,4 +26,8 @@ export function planTransaction(
       network: "GOAT Network",
     },
   };
+}
+
+export function recordPlanStage(recorder: TranscriptRecorder | undefined, decision: AgentDecision, preview: TransactionPreview) {
+  recorder?.recordStage("plan", { action: decision.suggestedAction }, preview);
 }

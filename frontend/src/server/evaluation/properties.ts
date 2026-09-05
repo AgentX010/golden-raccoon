@@ -1,5 +1,8 @@
 import type { AgentResult } from "@/server/types";
 import { runDecisionAgent } from "@/server/agents/decision";
+import { canonicalJson } from "./harness/determinism";
+import { replayTranscript } from "./harness/replayRunner";
+import type { AgentRunTranscript } from "./harness/transcript";
 
 export function missingDataDoesNotIncreaseConfidence(before: AgentResult, after: AgentResult) {
   return after.missingData.length > before.missingData.length ? after.confidence <= before.confidence : true;
@@ -21,4 +24,10 @@ export function reliableSourcesDoNotLowerConfidence(before: AgentResult, after: 
 
 export function noAgentResultRequiresManualReview() {
   return runDecisionAgent({ results: [] }).recommendedAction === "manual_review";
+}
+
+export function replayIsByteStable(transcript: AgentRunTranscript) {
+  const first = replayTranscript(transcript).serialized;
+  const second = replayTranscript(transcript).serialized;
+  return first === second && first === canonicalJson(transcript.finalResult);
 }

@@ -12,7 +12,8 @@ export type ApiCacheKey =
   | "rules"
   | "transactions"
   | "alerts"
-  | "alertRules";
+  | "alertRules"
+  | "recovery";
 
 export type ApiCachePolicy = {
   name: string;
@@ -144,5 +145,10 @@ export function withCacheHeaders<T>(response: NextResponse<T>, key: ApiCacheKey)
 
   response.headers.set("Cache-Control", `${strategy.scope}, max-age=${strategy.seconds}, stale-while-revalidate=${strategy.seconds}`);
 
+  return response;
+}
+
+export function withCacheStatus<T>(response: NextResponse<T>, status: "fresh" | "stale" | "miss" | "negative") {
+  response.headers.set("X-Cache-Status", status);
   return response;
 }

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useWalletSession } from "@/hooks/useWalletSession";
+import AutoModeGuardrailPanel from "@/components/AutoModeGuardrailPanel";
 
 type AutoModePolicy = {
   schemaVersion: 1;
@@ -315,6 +316,17 @@ export function AutoModeOnboarding() {
           {snapshot?.effectiveEnabled ? "Auto mode on" : "Auto mode off"}
         </StatusPill>
       </div>
+
+      {snapshot ? (
+        <div className="mt-4">
+          <AutoModeGuardrailPanel
+            state={{
+              engaged: snapshot.requestedEnabled && !snapshot.effectiveEnabled,
+              reason: snapshot.blockers[0],
+            }}
+          />
+        </div>
+      ) : null}
 
       {!isConnected ? (
         <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-300/8 p-4 text-sm text-amber-100">
